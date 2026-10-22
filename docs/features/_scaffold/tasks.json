@@ -1,0 +1,52 @@
+{
+  "slug": "_scaffold",
+  "source": "docs/architecture-map.md (mode: greenfield-bootstrap), docs/adr/0001-0003",
+  "smoke_test": "python -m pip install -e .[dev] succeeds; python -m app starts and exits 0; ruff check . && pytest is green; the schema applies twice to a fresh SQLite file without error",
+  "tasks": [
+    {
+      "id": "S1",
+      "title": "Create pyproject.toml, the app package skeleton and the entry point",
+      "layer": "scaffold",
+      "deps": [],
+      "acs": [],
+      "dod": "pyproject.toml declares requires-python = \">=3.12\" (development runs on 3.14), runtime deps fastapi, uvicorn, httpx and dev extra pytest, ruff with versions pinned from what pip resolves; app/__init__.py, app/core/__init__.py, app/clients/__init__.py, app/web.py with create_app() returning a FastAPI instance (no routes), app/__main__.py that builds the app and exits 0 when run without a command; .gitignore adds .venv/, data/, .pytest_cache/, .ruff_cache/; python -m pip install -e .[dev] succeeds",
+      "files_hint": ["pyproject.toml", "app/__init__.py", "app/__main__.py", "app/web.py", "app/core/__init__.py", "app/clients/__init__.py", ".gitignore"]
+    },
+    {
+      "id": "S2",
+      "title": "Wire pytest and ruff config plus the boot smoke test",
+      "layer": "scaffold",
+      "deps": ["S1"],
+      "acs": [],
+      "dod": "pytest and ruff configured in pyproject.toml, with ruff target-version = \"py312\"; tests/test_smoke.py creates the app with create_app() and calls it in-process through FastAPI TestClient (an unknown path returns 404, proving the app boots); ruff check . && pytest is green with no network access",
+      "files_hint": ["pyproject.toml", "tests/__init__.py", "tests/test_smoke.py"]
+    },
+    {
+      "id": "S3",
+      "title": "Add the SQLite store init with a startup schema",
+      "layer": "scaffold",
+      "deps": ["S1"],
+      "acs": [],
+      "dod": "app/store.py has init_store(path) that applies app/schema.sql through a short-lived sqlite3 connection, closed before returning (architecture map: a connection per operation) (CREATE TABLE IF NOT EXISTS only; feature tables come later from design/data-model, so it may hold only a schema version pragma); tests/test_store.py proves applying it twice to a tmp_path file succeeds; ruff check . && pytest is green",
+      "files_hint": ["app/store.py", "app/schema.sql", "tests/test_store.py"]
+    },
+    {
+      "id": "S4",
+      "title": "Add the GitHub Actions check workflow",
+      "layer": "scaffold",
+      "deps": ["S2"],
+      "acs": [],
+      "dod": ".github/workflows/check.yml runs on push and pull_request: sets up Python 3.14, runs python -m pip install -e .[dev], then ruff check . and pytest; no secrets, no network calls beyond package install; no job or step named test:integration, e2e or integration; YAML is valid",
+      "files_hint": [".github/workflows/check.yml"]
+    },
+    {
+      "id": "S5",
+      "title": "Add a commands section to CLAUDE.md from the foundation",
+      "layer": "scaffold",
+      "deps": ["S1"],
+      "acs": [],
+      "dod": "CLAUDE.md gains a short Commands section (venv setup, install, check command ruff check . && pytest, run python -m app) and a pointer to docs/architecture-map.md; existing CLAUDE.md content is unchanged; no build file contains a test:integration, e2e or integration target",
+      "files_hint": ["CLAUDE.md"]
+    }
+  ]
+}

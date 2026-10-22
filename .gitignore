@@ -17,8 +17,16 @@ secrets/
 # personal Claude Code settings and sdd per-developer settings
 .claude/settings.local.json
 .claude/*.local.md
+.worktrees/
 
 .DS_Store
 .vscode/
 .idea/
 interview-reference/
+
+# python tooling and local store (sdd scaffold)
+.venv/
+data/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
