@@ -228,6 +228,147 @@ are counted as duplicate events. A failed event is decided again from the curren
 the order lookup by external key runs before any create (AC-13, AC-19). The `sequences` stage draws
 this flow and the error branches.
 
+### Flow 2: retry by replay (US-04, US-09; AC-12, AC-13, AC-17, AC-19)
+
+```mermaid
+sequenceDiagram
+    actor Operator as Integration operator
+    participant CLI as Operator CLI
+    participant HS as HubSpot test system
+    participant Svc as Webhook service
+    participant Store as Local store
+    participant PO as PowerOffice test system
+    Note over Operator,PO: Precondition: an earlier replay left events with outcomes ordered, skipped, held or failed
+    Operator->>CLI: starts the replay again
+    CLI->>HS: fetches the recorded deliveries
+    HS-->>CLI: the same deliveries
+    loop each delivery, in order
+        CLI->>Svc: posts the delivery byte for byte with its original headers
+        Svc->>Svc: verifies the signature
+        Svc->>Store: persists the delivery, keeps events already stored by their event ID
+        Note over Svc,Store: persists the delivery, the event ID is unique
+        Svc-->>CLI: acknowledges
+        Svc->>Svc: background task takes the processing lock
+        loop each event of the delivery
+            Svc->>Store: reads the last outcome of the event
+            alt final outcome recorded (ordered, skipped or held)
+                Svc->>Svc: counts a duplicate event, keeps the outcome and reason
+            else last outcome failed, or a dry-run outcome
+                Svc->>HS: reads the current deal state again
+                Svc->>PO: looks up the order by the external key
+                alt an order with exactly this external key exists
+                    Svc->>Store: records the outcome skipped, order already exists
+                else no order found
+                    Svc->>Svc: decides the event again as in flow 3
+                    Svc->>PO: looks up the customer by orgnr, creates it only when none exists
+                    Svc->>PO: creates the Draft sales order
+                    Svc->>Store: records the outcome ordered
+                end
+                Note over Svc,Store: persists a new outcome for the event
+            end
+        end
+        Svc->>Svc: logs the delivery summary with duplicate events, releases the lock
+    end
+    CLI-->>Operator: prints counts of posted, acknowledged and rejected deliveries
+    Note over Operator,PO: Postcondition: no second customer or order, held events keep their outcome and reason
+```
+
+### Flow 3: process one event (US-01, US-02, US-03, US-07, US-08; AC-01 to AC-11, AC-14, AC-18, AC-20 to AC-22)
+
+```mermaid
+sequenceDiagram
+    participant Svc as Webhook service
+    participant Store as Local store
+    participant HS as HubSpot test system
+    participant PO as PowerOffice test system
+    Note over Svc,Store: Precondition: the event is persisted without a final outcome, the processing lock is held
+    Svc->>HS: reads the current deal, never the event's property value
+    alt the deal does not exist
+        Svc->>Store: records the outcome held, deal not found, not retried automatically
+    else the deal exists
+        Svc->>HS: reads the pipelines, companies and line items
+        Note over Svc,HS: paced 600 ms apart. On a limit response, waits for the interval and retries the read. GET also retries on 5xx, timeout and network errors
+        Svc->>Svc: checks won from the pipeline configuration, in any pipeline
+        alt current stage not won
+            Svc->>Store: records the outcome skipped, current stage not won
+        else won, and a hold rule applies
+            Svc->>Svc: normalizes the orgnr to nine digits, applies the hold rules
+            Note over Svc: hold reasons: no company, several companies, foreign customer (before invalid orgnr), missing or invalid orgnr, no line items, no currency
+            Svc->>Store: records the outcome held with its reason
+        else won and orderable
+            Svc->>Svc: maps line items to Draft order lines in the deal currency, discount as a percentage
+            Svc->>PO: looks up the order by the external key
+            alt an order with exactly this external key exists
+                Svc->>Store: records skipped, order already exists (an amount event gets change after order, not handled)
+            else no order
+                Svc->>PO: looks up the customer by the normalized orgnr
+                alt several customers match
+                    Svc->>Store: records the outcome held, orgnr matches several customers
+                else dry run
+                    Svc->>Store: records a dry-run outcome with the customer and order it would create
+                else one customer matches
+                    Svc->>PO: creates the Draft sales order on that customer
+                    Svc->>Store: records the outcome ordered, notes any discount rounding
+                else no customer matches
+                    Svc->>PO: creates the customer with name, orgnr, invoice email and country
+                    Svc->>PO: creates the Draft sales order on the new customer
+                    Svc->>Store: records the outcome ordered, notes any discount rounding
+                end
+            end
+        end
+    end
+    Note over Svc,Store: persists one outcome per event with its reason and technical IDs only
+    alt the accounting system fails or does not answer on any create above
+        Svc->>Store: records the outcome failed with the error type, kept for the next replay
+    end
+    Note over Svc,PO: Postcondition: at most one Draft order per deal, never an invoice, the event has one outcome
+```
+
+### Flow 4: receive and acknowledge a delivery (US-04, US-05, US-06; AC-12, AC-15, AC-16)
+
+```mermaid
+sequenceDiagram
+    participant CLI as Operator CLI
+    participant Svc as Webhook service
+    participant Store as Local store
+    Note over CLI,Svc: Precondition: a delivery arrives with its signature and timestamp headers and the raw body
+    CLI->>Svc: posts the delivery
+    Svc->>Svc: builds the signed text over HUBSPOT_WEBHOOK_URI, compares in constant time
+    alt signature missing or not matching
+        Svc->>Store: records the rejection with the timestamp header and a SHA-256 of the body
+        Note over Svc,Store: persists a rejection, technical identity only
+        Svc-->>CLI: rejects the delivery, no event is processed
+    else signature valid
+        Svc->>Svc: validates the body, a bad event is recorded and counted
+        Svc->>Store: persists the delivery and each new event by its event ID
+        Note over Svc,Store: persists delivery and events, the event ID is the idempotency key
+        Svc-->>CLI: acknowledges before any processing
+        Svc->>Svc: background task takes the processing lock
+        loop each event of the delivery
+            Svc->>Store: reads the last outcome of the event
+            alt final outcome already recorded
+                Svc->>Svc: counts a duplicate event, records nothing new
+            else no outcome yet, failed or dry-run
+                Svc->>Svc: processes the event as in flow 3
+                alt the event fails
+                    Svc->>Store: records the outcome failed with the reason, goes on with the next event
+                end
+            end
+        end
+        Svc->>Svc: logs the delivery summary with counts per outcome and duplicate events, releases the lock
+    end
+    Note over Svc,Store: retry: the clients retry GET and limit responses only. A failed event is retried only by the next replay (flow 2)
+    Note over CLI,Store: Postcondition: every accepted event has one recorded outcome, a failed one stays persisted
+```
+
+**Flags (sequences stage):**
+- Participants are named after the §5 containers and external systems, as in flow 1, instead of the
+  generic vocabulary. This is an owner decision (2026-10-22) so all diagrams read the same way.
+- The `report` command has no flow. It is one store read, so it adds nothing as a diagram (owner
+  decision). The US-06 run summary is shown as the delivery summary log line in flow 4.
+- There is no dead-letter queue. A failed event stays persisted with outcome failed and is retried
+  only by the next replay (ADR-0004).
+
 ## 7. Deployment view
 
 Not deployed (spec §3). It runs on the operator's machine as one uvicorn process with one worker,
