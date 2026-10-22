@@ -4,7 +4,7 @@ mode: greenfield-bootstrap   # current (brownfield scan) | greenfield-bootstrap 
 updated_at: "2026-10-22"
 reflects_commit: "1a8fc75"
 # machine-readable keys — decided toolchain; "" = not decided.
-language: "python 3.14"
+language: "python 3.14 (requires-python >=3.12)"
 build_cmd: "python -m pip install -e .[dev]"
 test_cmd: "pytest"
 lint_cmd: "ruff check ."
@@ -22,7 +22,8 @@ frontend: ""
 
 Decided with the owner on 2026-10-22; reasons in [ADR-0001](./adr/0001-use-python-fastapi-sqlite.md).
 
-- Language / runtime: Python 3.14 (installed locally). Money is always `Decimal`, never `float`.
+- Language / runtime: Python 3.14 for development and CI; `requires-python = ">=3.12"`, enforced
+  in lint by ruff `target-version = "py312"`. Money is always `Decimal`, never `float`.
 - Frameworks: FastAPI + uvicorn (webhook endpoint, boundary validation via its pydantic models,
   in-process `TestClient`); httpx (outbound HTTP clients; `httpx.MockTransport` for test fakes);
   `sqlite3` from the standard library (store).
@@ -68,7 +69,7 @@ Concrete files inside each module are decided in design.
 |---|---|---|---|---|
 | config | `app/config.py` | edge | `app/__main__.py` (planned) | Load and validate environment once; fail with missing variable names, never values |
 | core | `app/core/` | pure domain | called by the processor | Won rule, orgnr normalization, hold rules, deal-to-order mapping, discount conversion. No I/O |
-| clients | `app/clients/` | edge (boundary) | constructed in `app/__main__.py` (planned) | HubSpot and PowerOffice HTTP clients on `httpx.Client`: timeout on every call, retry only 429/5xx/network |
+| clients | `app/clients/` | edge (boundary) | constructed in `app/__main__.py` (planned) | HubSpot and PowerOffice HTTP clients on `httpx.Client`: timeout on every call. Automatic retries only for GET requests (429, 5xx, timeout, network error) and for 429 on any method (the request was not processed). A POST that fails with 5xx, a timeout or a network error is never retried by the client; the error goes back to the processor, which looks up by the external key before any new create (spec AC-13, CLAUDE.md "Errors") |
 | store | `app/store.py` + `app/schema.sql` | edge | opened at startup | `sqlite3` access; schema applied at startup; unique key on event ID; one transaction per outcome |
 | web | `app/web.py` | edge | `app/__main__.py` (planned) | FastAPI app: webhook endpoint, signature over the raw body |
 | entry | `app/__main__.py` | edge | `python -m app` | Wires config, store, clients, web; CLI commands decided in design |
@@ -86,8 +87,10 @@ creates the first example of each, and the next `survey` refresh cites it.
   the run continues (CLAUDE.md "Errors").
 - **IDs:** external IDs only — HubSpot event ID, deal ID; PowerOffice customer and order IDs. The
   order's external key is derived from the deal ID. No app-generated IDs.
-- **Persistence / DB access:** `sqlite3` with plain SQL, no ORM; one connection per process; one
-  transaction per recorded outcome ([ADR-0003](./adr/0003-use-sqlite-file-store-with-startup-schema.md)).
+- **Persistence / DB access:** `sqlite3` with plain SQL, no ORM; a short-lived
+  connection per operation, because sync FastAPI endpoints and background tasks run in other
+  threads and `sqlite3` connections are bound to the thread that created them; one transaction per
+  recorded outcome ([ADR-0003](./adr/0003-use-sqlite-file-store-with-startup-schema.md)).
 - **Migrations:** none. `app/schema.sql` uses `CREATE TABLE IF NOT EXISTS` and is applied at
   startup; a schema change during the assignment means deleting the local file.
 - **Tests:** pytest under `tests/`, mirroring `app/` modules; synthetic fixtures shaped like
@@ -119,8 +122,8 @@ creates the first example of each, and the next `survey` refresh cites it.
 ## Constraints & known tech-debt
 
 - Only the two test systems' hosts may be called (CLAUDE.md). Live runs are manual, by the human.
-- Python 3.14 wheel support for FastAPI's dependencies (pydantic-core) is not verified
-  `[placeholder]` — checked at scaffold install; fallback is Python 3.13 (records a FINDINGS-style note).
+- `requires-python = ">=3.12"` so a reviewer with an older Python can install it; development and
+  CI run on 3.14. Ruff `target-version = "py312"` catches syntax newer than the minimum.
 - No migration framework: schema changes during the assignment reset the local store.
 - Single process, single SQLite file: no concurrency beyond one worker (known limitation).
 - Production queue/database are documented only (PostgreSQL, managed queue, outbox).
