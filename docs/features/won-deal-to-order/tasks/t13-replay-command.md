@@ -9,8 +9,8 @@ files_hint: ["app/replay.py", "tests/test_replay.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T13 — Replay recorded deliveries byte for byte to the local endpoint

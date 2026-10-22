@@ -258,7 +258,7 @@
         "tests/test_replay.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t13-replay-command.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T14",
