@@ -310,7 +310,7 @@ interval, retry); dry run. AC-17 is the manual acceptance check, run by the owne
 
 - **Orderable won deals with exactly one Draft order** — baseline: 0 (manual re-keying), target: 4 of 4 in the recorded replay, on the first replay.
 - **Duplicates created by a second replay** — baseline: not measured, target: 0 customers and 0 orders.
-- **Events without a recorded outcome** — baseline: not measured, target: 0 per replay.
+- **Events without a recorded outcome** — baseline: not measured, target: 0 per replay, counting events in accepted deliveries; events in rejected deliveries are never stored (AC-15).
 - **Held deals with a plain reason** — baseline: 0, target: 2 of 2 in the recorded replay (deal 40211700209 is rejected by the signature check, not held; see AC-17).
 
 ## 8. Open questions
