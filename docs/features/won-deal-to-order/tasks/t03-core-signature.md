@@ -9,8 +9,8 @@ files_hint: ["app/core/signature.py", "tests/core/test_signature.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T3 — Verify the HubSpot v3 signature in a pure function

@@ -10,7 +10,7 @@
 |---|---|---|---|---|---|---|---|
 | T1 | Promote the four staged tables into app/schema.sql | migration | Oleksandr Ponomarenko | S | — | todo | — |
 | T2 | Add store functions for deliveries, events, outcomes and rejections | infra | Oleksandr Ponomarenko | S | T1 | todo | — |
-| T3 | Verify the HubSpot v3 signature in a pure function | domain | Oleksandr Ponomarenko | S | — | todo | — |
+| T3 | Verify the HubSpot v3 signature in a pure function | domain | Oleksandr Ponomarenko | S | — | done | COMMIT |
 | T4 | Normalize the orgnr and detect foreign registrations | domain | Oleksandr Ponomarenko | S | — | todo | — |
 | T5 | Resolve won stages from the pipeline configuration | domain | Oleksandr Ponomarenko | S | — | todo | — |
 | T6 | Map a deal and its line items to a Draft order with percentage discounts | domain | Oleksandr Ponomarenko | S | — | todo | — |
