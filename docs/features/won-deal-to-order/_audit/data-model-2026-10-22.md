@@ -45,6 +45,6 @@ None. All tables are new. The existing schema contains only `PRAGMA user_version
   is not enforced.
 - `PRAGMA user_version` stays at 1. `tests/test_store.py` asserts 1, so bumping it would change a
   test; leave it unless the owner decides otherwise.
-- An event that fails body validation and has no usable `eventId` cannot be stored in `events`.
-  sad.md §8 says it is "recorded and counted". With this schema it is logged and counted in the
-  delivery summary only. Owner to confirm, or record it as a known limitation.
+- Resolved (owner, 2026-10-22): an event that fails body validation is logged and counted in the
+  delivery summary, not stored. sad.md §8 Validation row updated to match. All recorded deliveries
+  parse and carry an `eventId` (`evidence/api-hubspot-webhooks.md`), so this path is a safeguard.

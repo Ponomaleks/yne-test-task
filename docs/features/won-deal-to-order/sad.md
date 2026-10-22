@@ -395,7 +395,7 @@ is process-wide (ADR-0004).
 | Concurrency | One process-wide lock around processing; one uvicorn worker | ADR-0004 |
 | Dry run | All reads and decisions run, and the outcome records what would be created. No write to PowerOffice. Dry-run outcomes are marked and never count as final, so a later real run still creates the order | here; AC-18 |
 | Error handling | Config, auth or unreachable system at startup: stop with a clear message. A failure in one unit of work: outcome failed with the reason, logged with event ID, counted; the rest continue | CLAUDE.md "Errors"; AC-16 |
-| Validation | Delivery body and API responses validated at the boundary (pydantic models). A bad event is recorded and counted; the others continue | CLAUDE.md checklist |
+| Validation | Delivery body and API responses validated at the boundary (pydantic models). An event that fails body validation is logged and counted in the delivery summary, not stored (without a usable event ID it has no key in the store); the others continue. All recorded deliveries parse and carry an event ID (`evidence/api-hubspot-webhooks.md`), so this path is a safeguard | CLAUDE.md checklist; data-model.md |
 | IDs | External IDs only. Deal ID kept as text (it is a number in events, text in the CRM: spec §1) | architecture map |
 | Money and rounding | `Decimal` throughout. Discount per unit becomes a percentage of the unit price, rounded half up to two decimals, and the outcome notes the rounding (AC-21) | here |
 | Personal data | Not in logs, outcomes or the store. The store keeps event fields needed for processing only: no raw body, no `propertyValue`, no `sourceId`. A rejection is stored with the request timestamp header and a SHA-256 of the body | spec §6.1; AC-15 |
