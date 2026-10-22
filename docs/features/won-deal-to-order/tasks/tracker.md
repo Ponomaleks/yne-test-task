@@ -8,7 +8,7 @@
 
 | # | Task | Layer | Owner | Estimate | Blocked by | Status | Step |
 |---|---|---|---|---|---|---|---|
-| T1 | Promote the four staged tables into app/schema.sql | migration | Oleksandr Ponomarenko | S | — | todo | — |
+| T1 | Promote the four staged tables into app/schema.sql | migration | Oleksandr Ponomarenko | S | — | done | COMMIT |
 | T2 | Add store functions for deliveries, events, outcomes and rejections | infra | Oleksandr Ponomarenko | S | T1 | todo | — |
 | T3 | Verify the HubSpot v3 signature in a pure function | domain | Oleksandr Ponomarenko | S | — | done | COMMIT |
 | T4 | Normalize the orgnr and detect foreign registrations | domain | Oleksandr Ponomarenko | S | — | done | COMMIT |

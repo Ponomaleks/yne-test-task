@@ -24,7 +24,7 @@
         "tests/test_store.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t01-schema-tables.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T2",

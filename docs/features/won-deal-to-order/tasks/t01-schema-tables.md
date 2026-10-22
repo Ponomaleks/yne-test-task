@@ -9,8 +9,8 @@ files_hint: ["docs/features/won-deal-to-order/migrations/01_create_deliveries.up
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T1 — Promote the four staged tables into app/schema.sql
