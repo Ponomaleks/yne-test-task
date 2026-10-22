@@ -21,3 +21,26 @@ def test_serve_with_missing_config_exits_one_naming_variables_only(capsys):
 def test_replay_with_missing_config_exits_one(capsys):
     assert main(["replay"], env={}) == 1
     assert "HUBSPOT_APP_TOKEN" in capsys.readouterr().err
+
+
+def test_serve_wires_process_delivery_as_the_web_callback(monkeypatch, tmp_path):
+    import app.__main__ as cli
+
+    env = {
+        "HUBSPOT_BASE_URL": "https://crm.example.test",
+        "HUBSPOT_APP_TOKEN": "placeholder",
+        "HUBSPOT_WEBHOOKS_SECRET": "placeholder",
+        "HUBSPOT_WEBHOOK_URI": "https://hooks.example.test/webhooks/hubspot",
+        "POWEROFFICE_BASE_URL": "https://acc.example.test",
+        "POWEROFFICE_CLIENT_ID": "placeholder",
+        "POWEROFFICE_CLIENT_SECRET": "placeholder",
+    }
+    captured = {}
+    monkeypatch.setattr(cli, "STORE_PATH", str(tmp_path / "store.db"))
+    monkeypatch.setattr(cli, "create_app", lambda **kwargs: captured.update(kwargs))
+    monkeypatch.setattr(cli.uvicorn, "run", lambda *args, **kwargs: None)
+
+    assert main(["serve"], env=env) == 0
+    process = captured["process"]
+    assert process.func is cli.process_delivery
+    assert process.keywords["dry_run"] is True

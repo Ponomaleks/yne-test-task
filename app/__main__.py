@@ -1,4 +1,5 @@
 import argparse
+import functools
 import os
 import sys
 from collections.abc import Mapping
@@ -7,7 +8,9 @@ import httpx
 import uvicorn
 
 from app.clients.hubspot import HubSpotClient
+from app.clients.poweroffice import PowerOfficeClient
 from app.config import ConfigError, load_config
+from app.processor import process_delivery
 from app.replay import replay
 from app.store import init_store
 from app.web import create_app
@@ -45,13 +48,27 @@ def main(argv: list[str], env: Mapping[str, str] | None = None) -> int:
 
     if args.command == "serve":
         init_store(STORE_PATH)
-        # The process callback is not passed yet: T11 wires it.
-        app = create_app(
-            store_path=STORE_PATH,
-            secret=config.hubspot_webhooks_secret,
-            webhook_uri=config.hubspot_webhook_uri,
-        )
-        uvicorn.run(app, host=HOST, port=PORT, workers=1)
+        # The clients live as long as the server; each delivery is processed in the background.
+        with httpx.Client() as http:
+            process = functools.partial(
+                process_delivery,
+                hubspot=HubSpotClient(config.hubspot_base_url, config.hubspot_app_token, http),
+                poweroffice=PowerOfficeClient(
+                    config.poweroffice_base_url,
+                    config.poweroffice_client_id,
+                    config.poweroffice_client_secret,
+                    http,
+                ),
+                store_path=STORE_PATH,
+                dry_run=config.dry_run,
+            )
+            app = create_app(
+                store_path=STORE_PATH,
+                secret=config.hubspot_webhooks_secret,
+                webhook_uri=config.hubspot_webhook_uri,
+                process=process,
+            )
+            uvicorn.run(app, host=HOST, port=PORT, workers=1)
         return 0
 
     with httpx.Client(timeout=30) as http:
