@@ -9,8 +9,8 @@ files_hint: ["app/core/order.py", "tests/core/test_order.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T6 — Map a deal and its line items to a Draft order with percentage discounts
