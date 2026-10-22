@@ -223,11 +223,6 @@ sequenceDiagram
     CLI-->>Operator: prints counts of posted, acknowledged and rejected deliveries
 ```
 
-**Critical flow 2: retry by replay** — the operator runs `replay` again. Events with a final outcome
-are counted as duplicate events. A failed event is decided again from the current deal state, and
-the order lookup by external key runs before any create (AC-13, AC-19). The `sequences` stage draws
-this flow and the error branches.
-
 ### Flow 2: retry by replay (US-04, US-09; AC-12, AC-13, AC-17, AC-19)
 
 ```mermaid
@@ -246,7 +241,6 @@ sequenceDiagram
         CLI->>Svc: posts the delivery byte for byte with its original headers
         Svc->>Svc: verifies the signature
         Svc->>Store: persists the delivery, keeps events already stored by their event ID
-        Note over Svc,Store: persists the delivery, the event ID is unique
         Svc-->>CLI: acknowledges
         Svc->>Svc: background task takes the processing lock
         loop each event of the delivery
