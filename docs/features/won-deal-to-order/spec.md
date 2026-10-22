@@ -252,7 +252,7 @@ interval, retry); dry run. AC-17 is the manual acceptance check, run by the owne
 
 **Given** the recorded deliveries of the test CRM
 **When** the integration operator replays them all, and then replays them all a second time
-**Then** the first replay creates orders for deals 40211700201, 40211700202, 40211700203 and 40211700206 (one each, although 40211700201 is delivered twice), holds 40211700204, 40211700205 and 40211700209, and skips 40211700207, 40211700208 and 40211700210; the second replay creates no customer and no order. The table matches the accounting-system probes (§1 traceability): no orgnr in it matches several existing customers, so AC-09 turns none of these orders into holds
+**Then** the first replay creates orders for deals 40211700201, 40211700202, 40211700203 and 40211700206 (one each, although 40211700201 is delivered twice), holds 40211700204 and 40211700205, skips 40211700207, 40211700208 and 40211700210, and rejects one delivery (deal 40211700209) with 401 `delivery.signature_mismatch` (AC-15); the second replay creates no customer and no order. Deal 40211700209 is not held for "deal not found": its only delivery fails the signature check, so nothing from it is stored or processed (docs/FINDINGS.md, 2026-10-23). AC-11 stays as a rule, covered by tests with mocks only. The table matches the accounting-system probes (§1 traceability): no orgnr in it matches several existing customers, so AC-09 turns none of these orders into holds
 
 ### AC-18 (US-08) — happy
 
@@ -311,7 +311,7 @@ interval, retry); dry run. AC-17 is the manual acceptance check, run by the owne
 - **Orderable won deals with exactly one Draft order** — baseline: 0 (manual re-keying), target: 4 of 4 in the recorded replay, on the first replay.
 - **Duplicates created by a second replay** — baseline: not measured, target: 0 customers and 0 orders.
 - **Events without a recorded outcome** — baseline: not measured, target: 0 per replay.
-- **Held deals with a plain reason** — baseline: 0, target: 3 of 3 in the recorded replay.
+- **Held deals with a plain reason** — baseline: 0, target: 2 of 2 in the recorded replay (deal 40211700209 is rejected by the signature check, not held; see AC-17).
 
 ## 8. Open questions
 

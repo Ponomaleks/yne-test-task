@@ -44,3 +44,14 @@ No personal values.
   it. Evidence: `evidence/api-hubspot-deals-summary-2.md`.
 - Handled: such a deal is held with the reason "deal not found" and is not retried automatically.
   Recorded as a rule for the spec.
+
+## 2026-10-23 - HubSpot test tool - One recorded delivery has an invalid signature
+
+- Docs say: every recorded delivery is signed with the app's client secret, exactly as sent.
+- Observed in the manual run: 10 of 11 recorded deliveries verify. Delivery 10 does not: its
+  signature does not match. It carries a won event (event 1010) for deal 40211700209, which returns
+  404 from the deals API. It behaves like a forged delivery.
+- Handled: the endpoint rejects it with 401 `delivery.signature_mismatch` before anything is stored
+  or processed (AC-15). The rejection keeps only the timestamp header and a SHA-256 of the body.
+  The spec's AC-17 and §7 are corrected: deal 40211700209 is no longer expected to be held for
+  "deal not found".
