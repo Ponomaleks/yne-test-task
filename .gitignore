@@ -1,0 +1,24 @@
+# dependencies and build output (generic; sdd scaffold may extend this)
+node_modules/
+dist/
+build/
+coverage/
+__pycache__/
+*.log
+
+# secrets - only .env.example is committed
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# personal Claude Code settings and sdd per-developer settings
+.claude/settings.local.json
+.claude/*.local.md
+
+.DS_Store
+.vscode/
+.idea/
+interview-reference/

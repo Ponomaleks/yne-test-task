@@ -1,0 +1,11 @@
+dist/
+node_modules/
+public/
+tools/
+docs/
+test-results/
+package-lock.json
+CLAUDE.md
+README.md
+.claude/
+CONTEXT.md
