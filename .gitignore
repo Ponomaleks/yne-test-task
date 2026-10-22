@@ -23,3 +23,10 @@ secrets/
 .vscode/
 .idea/
 interview-reference/
+
+# python tooling and local store (sdd scaffold)
+.venv/
+data/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

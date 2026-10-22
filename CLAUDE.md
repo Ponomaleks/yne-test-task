@@ -87,3 +87,12 @@ Implement what the slice needs. Record the rest as known limitations in the sdd 
 
 - Be concise. Lead with what changed and what the human needs to do.
 - When unsure, give two options with trade-offs and a recommendation. If the decision is reversible, proceed and record the assumption. If it is not reversible, wait for the human.
+
+## Commands
+
+Foundation: [docs/architecture-map.md](docs/architecture-map.md).
+
+- Venv: `python -m venv .venv`, then activate it (`.venv\Scripts\activate` on Windows, `source .venv/bin/activate` elsewhere).
+- Install: `python -m pip install -e .[dev]`
+- Check (rule 4): `ruff check . && pytest`
+- Run: `python -m app`
