@@ -9,8 +9,8 @@ files_hint: ["app/core/won.py", "tests/core/test_won.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T5 — Resolve won stages from the pipeline configuration

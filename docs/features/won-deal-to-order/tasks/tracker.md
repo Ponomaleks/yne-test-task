@@ -12,7 +12,7 @@
 | T2 | Add store functions for deliveries, events, outcomes and rejections | infra | Oleksandr Ponomarenko | S | T1 | todo | — |
 | T3 | Verify the HubSpot v3 signature in a pure function | domain | Oleksandr Ponomarenko | S | — | done | COMMIT |
 | T4 | Normalize the orgnr and detect foreign registrations | domain | Oleksandr Ponomarenko | S | — | todo | — |
-| T5 | Resolve won stages from the pipeline configuration | domain | Oleksandr Ponomarenko | S | — | todo | — |
+| T5 | Resolve won stages from the pipeline configuration | domain | Oleksandr Ponomarenko | S | — | done | COMMIT |
 | T6 | Map a deal and its line items to a Draft order with percentage discounts | domain | Oleksandr Ponomarenko | S | — | done | COMMIT |
 | T7 | Decide skip and hold outcomes as pure rules | domain | Oleksandr Ponomarenko | M | T4, T5 | todo | — |
 | T8 | Build the HubSpot client with pacing, 429 wait and GET retries | infra | Oleksandr Ponomarenko | M | — | todo | — |

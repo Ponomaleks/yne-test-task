@@ -93,7 +93,7 @@
         "tests/core/test_won.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t05-core-won.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T6",
