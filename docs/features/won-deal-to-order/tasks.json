@@ -152,7 +152,7 @@
         "tests/clients/test_hubspot.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t08-hubspot-client.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T9",

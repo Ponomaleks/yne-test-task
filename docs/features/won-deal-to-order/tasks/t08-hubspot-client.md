@@ -9,8 +9,8 @@ files_hint: ["app/clients/hubspot.py", "tests/clients/test_hubspot.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T8 — Build the HubSpot client with pacing, 429 wait and GET retries
