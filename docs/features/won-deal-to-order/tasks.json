@@ -1,0 +1,305 @@
+{
+  "slug": "won-deal-to-order",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Promote the four staged tables into app/schema.sql",
+      "layer": "migration",
+      "deps": [],
+      "acs": [
+        "AC-12",
+        "AC-15"
+      ],
+      "dod": "init_store applies app/schema.sql with the four tables and idx_outcomes_event_id twice to a fresh file, and schema tests for the unique event_id and outcome CHECK pass.",
+      "files_hint": [
+        "docs/features/won-deal-to-order/migrations/01_create_deliveries.up.sql",
+        "docs/features/won-deal-to-order/migrations/01_create_deliveries.down.sql",
+        "docs/features/won-deal-to-order/migrations/02_create_events.up.sql",
+        "docs/features/won-deal-to-order/migrations/02_create_events.down.sql",
+        "docs/features/won-deal-to-order/migrations/03_create_outcomes.up.sql",
+        "docs/features/won-deal-to-order/migrations/03_create_outcomes.down.sql",
+        "docs/features/won-deal-to-order/migrations/04_create_rejections.up.sql",
+        "docs/features/won-deal-to-order/migrations/04_create_rejections.down.sql",
+        "app/schema.sql",
+        "tests/test_store.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t01-schema-tables.md",
+      "status": "done"
+    },
+    {
+      "id": "T2",
+      "title": "Add store functions for deliveries, events, outcomes and rejections",
+      "layer": "infra",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-15"
+      ],
+      "dod": "Store unit tests pass for saving deliveries, events (INSERT OR IGNORE), rejections and outcomes, and for has_final_outcome treating failed and dry-run rows as not final.",
+      "files_hint": [
+        "app/store.py",
+        "tests/test_store.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t02-store-functions.md",
+      "status": "done"
+    },
+    {
+      "id": "T3",
+      "title": "Verify the HubSpot v3 signature in a pure function",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-15"
+      ],
+      "dod": "Unit tests pass: a correctly signed synthetic delivery verifies, and a changed body, URI, timestamp or a missing signature fails.",
+      "files_hint": [
+        "app/core/signature.py",
+        "tests/core/test_signature.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t03-core-signature.md",
+      "status": "done"
+    },
+    {
+      "id": "T4",
+      "title": "Normalize the orgnr and detect foreign registrations",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-06",
+        "AC-08"
+      ],
+      "dod": "Parametrized unit tests pass for every orgnr shape (plain, spaced, NO prefix, MVA suffix, invalid) and for foreign prefixes and countries.",
+      "files_hint": [
+        "app/core/orgnr.py",
+        "tests/core/test_orgnr.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t04-core-orgnr.md",
+      "status": "done"
+    },
+    {
+      "id": "T5",
+      "title": "Resolve won stages from the pipeline configuration",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-04",
+        "AC-05"
+      ],
+      "dod": "Unit tests pass: closed stages with probability 1.0 are won in any pipeline; lost, open and unknown stages are not.",
+      "files_hint": [
+        "app/core/won.py",
+        "tests/core/test_won.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t05-core-won.md",
+      "status": "done"
+    },
+    {
+      "id": "T6",
+      "title": "Map a deal and its line items to a Draft order with percentage discounts",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-20",
+        "AC-21"
+      ],
+      "dod": "Unit tests pass for one order line per line item, deal currency, external key hubspot-deal-<id>, and per-unit discounts converted to a two-decimal percentage with a rounding flag.",
+      "files_hint": [
+        "app/core/order.py",
+        "tests/core/test_order.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t06-core-order.md",
+      "status": "done"
+    },
+    {
+      "id": "T7",
+      "title": "Decide skip and hold outcomes as pure rules",
+      "layer": "domain",
+      "deps": [
+        "T4",
+        "T5"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-07",
+        "AC-08",
+        "AC-09",
+        "AC-10",
+        "AC-22"
+      ],
+      "dod": "Unit tests pass for each skip and hold reason, the foreign-before-invalid precedence, the not-won-first order and the several-customers hold.",
+      "files_hint": [
+        "app/core/decide.py",
+        "tests/core/test_decide.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t07-core-decide.md",
+      "status": "done"
+    },
+    {
+      "id": "T8",
+      "title": "Build the HubSpot client with pacing, 429 wait and GET retries",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-11",
+        "AC-14"
+      ],
+      "dod": "MockTransport tests pass for the 429 wait then success, 404 as DealNotFound, bounded GET retries on 5xx and the 15 s timeout.",
+      "files_hint": [
+        "app/clients/hubspot.py",
+        "tests/clients/test_hubspot.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t08-hubspot-client.md",
+      "status": "done"
+    },
+    {
+      "id": "T9",
+      "title": "Build the PowerOffice client with token, lookups and creates",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-13"
+      ],
+      "dod": "MockTransport tests pass for one token refresh on 401, POST not retried on 5xx or timeout, and exact reference equality on the order search.",
+      "files_hint": [
+        "app/clients/poweroffice.py",
+        "tests/clients/test_poweroffice.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t09-poweroffice-client.md",
+      "status": "done"
+    },
+    {
+      "id": "T10",
+      "title": "Process one event from the current deal state to one outcome",
+      "layer": "app",
+      "deps": [
+        "T2",
+        "T6",
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-09",
+        "AC-11",
+        "AC-13",
+        "AC-18",
+        "AC-20"
+      ],
+      "dod": "Processor tests with fake clients pass for AC-01, AC-02, AC-03, AC-09, AC-11, AC-13, AC-18 and AC-20, including zero POSTs in dry run.",
+      "files_hint": [
+        "app/processor.py",
+        "tests/test_processor.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t10-process-event.md",
+      "status": "done"
+    },
+    {
+      "id": "T11",
+      "title": "Process a delivery's events under one lock, counting duplicates and failures",
+      "layer": "app",
+      "deps": [
+        "T10"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-16",
+        "AC-19"
+      ],
+      "dod": "Processor tests pass for the AC-16 mixed delivery, a repeated delivery counted as duplicates, failed-then-retried events, held events kept, and two concurrent deliveries of one deal creating one order.",
+      "files_hint": [
+        "app/processor.py",
+        "tests/test_processor.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t11-process-delivery.md",
+      "status": "done"
+    },
+    {
+      "id": "T12",
+      "title": "Add the webhook endpoint: verify, persist, acknowledge, schedule",
+      "layer": "ports",
+      "deps": [
+        "T2",
+        "T3"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-15"
+      ],
+      "dod": "TestClient tests pass: valid delivery returns 204 and persists before processing; missing or mismatched signature returns 401 with a rejection row; a non-array body returns 400; a repeated delivery stores one event row; the smoke test stays green.",
+      "files_hint": [
+        "app/web.py",
+        "tests/test_web.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t12-webhook-endpoint.md",
+      "status": "done"
+    },
+    {
+      "id": "T13",
+      "title": "Replay recorded deliveries byte for byte to the local endpoint",
+      "layer": "ports",
+      "deps": [
+        "T8"
+      ],
+      "acs": [
+        "AC-17",
+        "AC-19"
+      ],
+      "dod": "Tests pass showing each recorded delivery is posted in order with its original headers and byte-identical body, and acknowledged and rejected responses are counted.",
+      "files_hint": [
+        "app/replay.py",
+        "tests/test_replay.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t13-replay-command.md",
+      "status": "done"
+    },
+    {
+      "id": "T14",
+      "title": "Print the run report from the store",
+      "layer": "ports",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "Tests pass for the report counts per last outcome and the exact event=<id> deal=<id> outcome=<o> reason=\"<r>\" line format from a temporary store.",
+      "files_hint": [
+        "app/report.py",
+        "tests/test_report.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t14-report-command.md",
+      "status": "todo"
+    },
+    {
+      "id": "T15",
+      "title": "Load config once and wire serve, replay and report commands",
+      "layer": "wiring",
+      "deps": [
+        "T11",
+        "T12",
+        "T13",
+        "T14"
+      ],
+      "acs": [
+        "AC-18"
+      ],
+      "dod": "Tests pass for config errors that name missing variables without values, DRY_RUN defaulting to true, and main([]) still returning 0.",
+      "files_hint": [
+        "app/config.py",
+        "app/__main__.py",
+        "tests/test_config.py",
+        "tests/test_main.py"
+      ],
+      "file": "docs/features/won-deal-to-order/tasks/t15-config-and-cli-wiring.md",
+      "status": "done"
+    }
+  ]
+}
