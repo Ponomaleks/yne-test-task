@@ -45,8 +45,14 @@ Traceability:
   replay of the recorded deliveries; the discount becomes a percentage rounded to two decimals, with
   the rounding noted. Netting the discount into the unit price was rejected because the discount
   would disappear from the order line.
-- Not yet verified: every accounting-system behavior (customer search by orgnr, order search by
-  external key, discount precision, error format). Probes run right before design (§8).
+- Accounting-system evidence (`evidence/api-poweroffice.md`, 2026-10-22): the token works and
+  expires after 900 s, so fetching a new token after an authentication rejection is enough for a
+  run; customer and order searches return a plain list; company 21894400101 has no customer yet,
+  21894400102 and 21894400103 each match exactly one existing customer by the normalized orgnr,
+  and no orgnr matches several customers; no order exists yet for deal 40211700201.
+- Not yet verified: exact versus partial matching of the order search by external key (§8, open
+  until the first live run); discount precision and the error format, which the probes did not
+  exercise.
 
 ## 2. Goals
 
@@ -246,7 +252,7 @@ interval, retry); dry run. AC-17 is the manual acceptance check, run by the owne
 
 **Given** the recorded deliveries of the test CRM
 **When** the integration operator replays them all, and then replays them all a second time
-**Then** the first replay creates orders for deals 40211700201, 40211700202, 40211700203 and 40211700206 (one each, although 40211700201 is delivered twice), holds 40211700204, 40211700205 and 40211700209, and skips 40211700207, 40211700208 and 40211700210; the second replay creates no customer and no order. This outcome table is provisional until the accounting-system probes (§8): customers that already exist there with the same orgnr can turn some orders into holds under AC-09
+**Then** the first replay creates orders for deals 40211700201, 40211700202, 40211700203 and 40211700206 (one each, although 40211700201 is delivered twice), holds 40211700204, 40211700205 and 40211700209, and skips 40211700207, 40211700208 and 40211700210; the second replay creates no customer and no order. The table matches the accounting-system probes (§1 traceability): no orgnr in it matches several existing customers, so AC-09 turns none of these orders into holds
 
 ### AC-18 (US-08) — happy
 
@@ -302,11 +308,11 @@ interval, retry); dry run. AC-17 is the manual acceptance check, run by the owne
 
 ## 7. Metrics / KPIs
 
-- **Orderable won deals with exactly one Draft order** — baseline: 0 (manual re-keying), target: 4 of 4 in the recorded replay, on the first replay (provisional until the accounting-system probes, as AC-17).
+- **Orderable won deals with exactly one Draft order** — baseline: 0 (manual re-keying), target: 4 of 4 in the recorded replay, on the first replay.
 - **Duplicates created by a second replay** — baseline: not measured, target: 0 customers and 0 orders.
 - **Events without a recorded outcome** — baseline: not measured, target: 0 per replay.
-- **Held deals with a plain reason** — baseline: 0, target: 3 of 3 in the recorded replay (provisional until the accounting-system probes, as AC-17).
+- **Held deals with a plain reason** — baseline: 0, target: 3 of 3 in the recorded replay.
 
 ## 8. Open questions
 
-- [ ] How does the accounting system behave for customer search by orgnr, order search by external key (exact or partial match), discount precision and errors? Default now: as documented; findings go to FINDINGS and design. — owner: Oleksandr Ponomarenko, due: before `/sdd:design` (PowerOffice probes)
+- [ ] Does the order search by external key match exactly, or also partially? Default now: treat a found order as a match only when its reference equals the deal's external key exactly. — owner: Oleksandr Ponomarenko, due: first live run (AC-17)
