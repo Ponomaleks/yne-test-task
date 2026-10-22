@@ -9,8 +9,8 @@ files_hint: ["app/web.py", "tests/test_web.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T12 — Add the webhook endpoint: verify, persist, acknowledge, schedule
