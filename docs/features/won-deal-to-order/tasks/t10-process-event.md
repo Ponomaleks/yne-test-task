@@ -9,8 +9,8 @@ files_hint: ["app/processor.py", "tests/test_processor.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T10 — Process one event from the current deal state to one outcome

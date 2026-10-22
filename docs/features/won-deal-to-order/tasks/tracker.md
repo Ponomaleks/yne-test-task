@@ -17,7 +17,7 @@
 | T7 | Decide skip and hold outcomes as pure rules | domain | Oleksandr Ponomarenko | M | T4, T5 | done | COMMIT |
 | T8 | Build the HubSpot client with pacing, 429 wait and GET retries | infra | Oleksandr Ponomarenko | M | — | done | COMMIT |
 | T9 | Build the PowerOffice client with token, lookups and creates | infra | Oleksandr Ponomarenko | M | — | done | COMMIT |
-| T10 | Process one event from the current deal state to one outcome | app | Oleksandr Ponomarenko | M | T2, T6, T7, T8, T9 | todo | — |
+| T10 | Process one event from the current deal state to one outcome | app | Oleksandr Ponomarenko | M | T2, T6, T7, T8, T9 | done | COMMIT |
 | T11 | Process a delivery's events under one lock, counting duplicates and failures | app | Oleksandr Ponomarenko | S | T10 | todo | — |
 | T12 | Add the webhook endpoint: verify, persist, acknowledge, schedule | ports | Oleksandr Ponomarenko | M | T2, T3 | done | COMMIT |
 | T13 | Replay recorded deliveries byte for byte to the local endpoint | ports | Oleksandr Ponomarenko | S | T8 | done | COMMIT |
