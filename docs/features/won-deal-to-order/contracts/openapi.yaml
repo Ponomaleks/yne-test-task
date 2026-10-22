@@ -1,0 +1,181 @@
+# Derived contract for won-deal-to-order (sdd api stage). Sources:
+#   fields + constraints  <- data-model.md (deliveries, events, rejections)
+#   error responses       <- sad.md §6 flow 4 alt-branches
+#   endpoint list + shape <- spec.md §4 US-04, US-05, US-06 / §5 AC-12, AC-15, AC-16
+# Field origins and drift findings: api-sync-report.md.
+openapi: 3.1.0
+
+info:
+  title: won-deal-to-order webhook API
+  version: 0.1.0
+  description: |
+    Receives the CRM's webhook deliveries, so that each won deal can become exactly one Draft
+    sales order in the accounting system without re-keying (spec.md §1). The only consumer is the
+    operator's `replay` command, which posts the CRM's recorded deliveries byte for byte with their
+    original headers (ADR-0004). The endpoint verifies the signature, persists the delivery and its
+    events, and acknowledges before any processing. Processing runs afterwards in a background
+    task, so outcomes are never part of a response: they are read with `python -m app report`
+    (contracts/cli.md).
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local only; the service is not deployed (sad.md §7)
+
+# Inbound authentication is the CRM's signature v3, not a bearer token (spec.md §6.1, sad.md §8).
+security:
+  - HubSpotSignatureV3: []
+
+paths:
+  /webhooks/hubspot:
+    post:
+      summary: Receive one webhook delivery
+      operationId: receiveDelivery
+      description: |
+        Verifies `X-HubSpot-Signature-v3`: an HMAC-SHA256 with the app secret over the method,
+        `HUBSPOT_WEBHOOK_URI` (never the local URL), the raw body and `X-HubSpot-Request-Timestamp`,
+        compared in constant time. The signature is checked over the raw bytes, before the body is
+        parsed. The timestamp age check is waived (spec.md §6.1).
+
+        On a valid signature the delivery is stored in `deliveries` and each new event in `events`
+        by its event ID (`INSERT OR IGNORE`), then the response is sent. A repeated delivery or a
+        repeated event gets the same acknowledgement; the duplicate is counted later by the
+        background task (AC-12). An event that fails validation is logged and counted in the
+        delivery summary, not stored, and does not change the response (sad.md §8 Validation).
+
+        No idempotency header: the CRM does not send one. The event ID is the idempotency key.
+      security:
+        - HubSpotSignatureV3: []
+      parameters:
+        - in: header
+          name: X-HubSpot-Signature-v3
+          # Not required at the schema level: a missing header is a handled branch (401, recorded
+          # rejection), not a framework validation error.
+          required: false
+          description: Base64 HMAC-SHA256 signature. Missing → 401 `delivery.signature_missing`.
+          schema: { type: string }
+        - in: header
+          name: X-HubSpot-Request-Timestamp
+          required: false
+          description: |
+            Epoch milliseconds, part of the signed text; stored as `deliveries.request_timestamp`
+            (INTEGER). Missing or not digits → the signature cannot match → 401
+            `delivery.signature_mismatch`; the rejection stores the header as received, NULL when
+            missing (`rejections.request_timestamp`).
+          schema: { type: string, pattern: "^[0-9]+$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Delivery" }
+            example:
+              - eventId: 1001
+                subscriptionType: deal.propertyChange
+                objectId: 2001
+                propertyName: dealstage
+                propertyValue: "<stage-id>"
+                occurredAt: 1700000000000
+                attemptNumber: 0
+      responses:
+        "204":
+          description: |
+            Acknowledged: the delivery and its new events are persisted. Sent before any
+            processing (QG-3: ≤ 5 s, target p95 ≤ 1 s).
+        "400":
+          description: |
+            The signature is valid but the body is not a JSON array of events. Nothing is stored
+            and nothing is processed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                code: delivery.invalid_body
+                message: "Body is not a JSON array of events"
+        "401":
+          description: |
+            Signature missing or not matching. The rejection is stored in `rejections` with the
+            timestamp header and a SHA-256 of the body only; no event is stored or processed
+            (AC-15).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              examples:
+                missing:
+                  value:
+                    code: delivery.signature_missing
+                    message: "Signature header missing"
+                mismatch:
+                  value:
+                    code: delivery.signature_mismatch
+                    message: "Signature does not match the delivery"
+        "500":
+          description: |
+            The delivery could not be persisted (store write failed). Not acknowledged, so the
+            CRM or the next replay delivers it again; nothing was processed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                code: delivery.not_persisted
+                message: "Delivery could not be stored"
+
+components:
+  securitySchemes:
+    HubSpotSignatureV3:
+      type: apiKey
+      in: header
+      name: X-HubSpot-Signature-v3
+      description: |
+        HMAC-SHA256 signature v3 made by the CRM with the app secret (`HUBSPOT_WEBHOOKS_SECRET`)
+        over method + `HUBSPOT_WEBHOOK_URI` + raw body + `X-HubSpot-Request-Timestamp`. Not a
+        static key: it is verified per request, never compared to a stored value.
+
+  schemas:
+    # Unified error envelope. `code` follows the neutral `module.error_name` convention.
+    Error:
+      type: object
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          enum:
+            - delivery.signature_missing
+            - delivery.signature_mismatch
+            - delivery.invalid_body
+            - delivery.not_persisted
+        message: { type: string }
+        details:
+          type: object
+          description: Optional technical context; never personal values (spec.md §6.1).
+
+    Delivery:
+      type: array
+      description: |
+        One delivery holds one or more events (evidence: 1 to 3 per delivery). Its size is stored
+        as `deliveries.event_count`.
+      items: { $ref: "#/components/schemas/Event" }
+
+    Event:
+      type: object
+      description: |
+        One change notification. Only the properties below are read and stored (`events` table).
+        The CRM sends more (`propertyValue`, `sourceId`, `occurredAt`, …); they are allowed and
+        ignored. `propertyValue` is never trusted (AC-04) and, like `sourceId`, never stored
+        (spec.md §6.1).
+      required: [eventId, objectId, subscriptionType]
+      additionalProperties: true
+      properties:
+        eventId:
+          type: integer
+          description: Idempotency key → `events.event_id` (INTEGER PRIMARY KEY).
+        objectId:
+          type: integer
+          description: The deal ID → `events.deal_id`, stored as text (sad.md §8 IDs).
+        subscriptionType:
+          type: string
+          description: → `events.subscription_type`, e.g. `deal.propertyChange`, `deal.creation`.
+        propertyName:
+          type: [string, "null"]
+          description: |
+            → `events.property_name`: `dealstage` or `amount`; absent for `deal.creation`. Tells
+            an amount event apart (AC-12, AC-16).

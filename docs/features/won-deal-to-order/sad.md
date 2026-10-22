@@ -149,7 +149,7 @@ app/
 ├── web.py               webhook endpoint: raw body, signature, persist, acknowledge, schedule processing
 ├── processor.py         one unit of work per event, under the process-wide lock
 ├── replay.py            fetch recorded deliveries, post each unchanged to the local endpoint
-├── report.py            read the store, print counts per outcome and one line per deal
+├── report.py            read the store, print counts per outcome and one line per event
 ├── store.py, schema.sql deliveries, events, outcomes, rejections
 ├── clients/
 │   ├── hubspot.py       deal, associations, companies, line items, pipelines, recorded deliveries
@@ -373,7 +373,7 @@ is process-wide (ADR-0004).
 - Structured key=value log lines per delivery (ID, event count, duration, status) and per event
   (event ID, deal ID, outcome, reason). One summary line per delivery with counts per outcome and
   duplicate events.
-- `python -m app report`, run after a replay: counts per outcome and one line per deal (technical
+- `python -m app report`, run after a replay: counts per outcome and one line per event (event ID,
   deal ID, outcome, reason).
 - No metrics backend and no alerting (spec §3 known limitations).
 
@@ -390,7 +390,7 @@ is process-wide (ADR-0004).
 | Outbound authentication | CRM: app token. Accounting system: client-credentials token, fetched once and fetched again after an authentication rejection (spec §1, §3) | here |
 | Timeouts, retries, rate limit | ≤ 15 s timeout on every call. Client retries are as in the architecture map, clients row. CRM calls are paced 600 ms apart (evidence probe). On 429, honor `Retry-After` when present, else wait `X-HubSpot-RateLimit-Interval-Milliseconds`, then retry (AC-14; `Retry-After` not observed per FINDINGS) | architecture map; FINDINGS; CLAUDE.md checklist |
 | Pagination | No paging fields in the evidence for the recorded deliveries (`evidence/api-hubspot-webhooks.md`) or for the PowerOffice customer and order searches (`evidence/api-poweroffice.md`), so one page is assumed. Deal association paging is a spec §3 known limitation | here; §11 |
-| Run summary | One summary log line per delivery (counts per outcome and duplicate events) plus `python -m app report` after a replay: counts per outcome (ordered, skipped, held, failed) and one line per deal with technical deal ID, outcome and reason. No personal values. Duplicate events are only in the logs | here; US-06, AC-12 |
+| Run summary | One summary log line per delivery (counts per outcome and duplicate events) plus `python -m app report` after a replay: counts per outcome (ordered, skipped, held, failed) and one line per event: `event=<id> deal=<id> outcome=<o> reason="<r>"` (the last outcome of each event). No personal values. Duplicate events are only in the logs | here; US-06, AC-12 |
 | Idempotency | Unique event ID in the store. Final outcome means duplicate event. Lookup before create: customer by normalized orgnr, order by external key `hubspot-deal-<dealId>` with exact equality | here; AC-12, AC-13 |
 | Concurrency | One process-wide lock around processing; one uvicorn worker | ADR-0004 |
 | Dry run | All reads and decisions run, and the outcome records what would be created. No write to PowerOffice. Dry-run outcomes are marked and never count as final, so a later real run still creates the order | here; AC-18 |
@@ -470,7 +470,7 @@ Domain terms are canonical in [CONTEXT.md](./CONTEXT.md). Terms added by this de
 |---|---|
 | Recorded delivery | A delivery kept by the CRM test tool, with its original method, address, headers and body |
 | Replay | The `replay` CLI command: posts every recorded delivery unchanged to the local endpoint. It is also the retry for failed events |
-| Report | The `report` CLI command: counts per outcome and one line per deal (technical deal ID, outcome, reason), read from the store |
+| Report | The `report` CLI command: counts per outcome and one line per event (event ID, deal ID, outcome, reason), read from the store |
 | Final outcome | Ordered, skipped or held for review, recorded outside dry run. Failed is not final |
 | Duplicate event | An event that arrives again after it already has a final outcome; counted in the delivery summary, not recorded again |
 | Processing lock | The process-wide lock that lets only one background task process events at a time |
