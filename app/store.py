@@ -11,6 +11,8 @@ _OUTCOME_COLUMNS = "id, event_id, deal_id, outcome, reason, dry_run, recorded_at
 
 
 def init_store(path: str | Path) -> None:
+    # sqlite3 creates the file but not its folder, e.g. a fresh checkout has no data/.
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     # A short-lived connection per operation: sqlite3 connections are bound to their thread.
     conn = sqlite3.connect(path)
     try:

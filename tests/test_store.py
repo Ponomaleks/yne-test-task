@@ -197,3 +197,11 @@ def test_last_outcomes_has_one_row_per_event_ordered_by_event_id(tmp_path):
     rows = last_outcomes(db_path)
 
     assert [(r["event_id"], r["outcome"]) for r in rows] == [(1, "ordered"), (2, "skipped")]
+
+
+def test_init_store_creates_a_missing_parent_folder(tmp_path):
+    db_path = tmp_path / "data" / "store.db"
+
+    init_store(db_path)
+
+    assert db_path.is_file()
