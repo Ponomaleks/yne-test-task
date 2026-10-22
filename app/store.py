@@ -40,6 +40,8 @@ def save_delivery(
             " VALUES (?, ?, ?, ?)",
             (request_timestamp, body_sha256, event_count, _now_ms()),
         )
+        if cursor.lastrowid is None:
+            raise RuntimeError("deliveries insert returned no row id")
         return cursor.lastrowid
 
 

@@ -48,10 +48,12 @@ def create_app(
         body_sha256 = hashlib.sha256(body).hexdigest()
         signature = request.headers.get(SIGNATURE_HEADER)
         timestamp = request.headers.get(TIMESTAMP_HEADER)
-        timestamp_ok = timestamp is not None and timestamp.isdigit()
-
-        if not signature or not timestamp_ok or not is_valid_signature(
-            secret, "POST", webhook_uri, body, timestamp, signature
+        # The None check is inline so the type checker knows timestamp is str after the return.
+        if (
+            not signature
+            or timestamp is None
+            or not timestamp.isdigit()
+            or not is_valid_signature(secret, "POST", webhook_uri, body, timestamp, signature)
         ):
             code = "delivery.signature_missing" if not signature else "delivery.signature_mismatch"
             try:
