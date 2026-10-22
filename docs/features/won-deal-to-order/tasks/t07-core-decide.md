@@ -9,8 +9,8 @@ files_hint: ["app/core/decide.py", "tests/core/test_decide.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T7 — Decide skip and hold outcomes as pure rules

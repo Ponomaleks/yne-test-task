@@ -135,7 +135,7 @@
         "tests/core/test_decide.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t07-core-decide.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T8",
