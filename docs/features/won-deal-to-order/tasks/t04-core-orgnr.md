@@ -9,8 +9,8 @@ files_hint: ["app/core/orgnr.py", "tests/core/test_orgnr.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T4 — Normalize the orgnr and detect foreign registrations

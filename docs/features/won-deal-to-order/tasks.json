@@ -76,7 +76,7 @@
         "tests/core/test_orgnr.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t04-core-orgnr.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T5",
