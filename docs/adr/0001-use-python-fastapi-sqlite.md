@@ -33,7 +33,7 @@ includes a live change in the interview, so the author must explain and change e
 
 ## Considered options
 
-1. **Python 3.14 + FastAPI + uvicorn + httpx + sqlite3 + pytest + ruff** — mainstream, owner's
+1. **Python (>=3.12, developed on 3.14) + FastAPI + uvicorn + httpx + sqlite3 + pytest + ruff** — mainstream, owner's
    experience, standard-library store.
 2. **TypeScript on Node 24 with built-ins** (native type stripping, node:http, fetch, node:sqlite,
    node:test, zod) — technically fine and probed locally, but not the owner's backend experience.
@@ -48,6 +48,8 @@ for the signature check, validation at the boundary and an in-process `TestClien
 `httpx.MockTransport` fakes the external APIs without extra libraries.
 
 Rules that come with it:
+- Python: `requires-python = ">=3.12"` so a reviewer with an older Python can install it;
+  development and CI run on 3.14; ruff `target-version = "py312"`.
 - Dependencies: fastapi, uvicorn, httpx; dev: pytest, ruff. No other dependencies.
 - No ORM, no migration framework, no queue framework (ADR-0003).
 - No async where it is not needed: sync endpoints and `httpx.Client`.
@@ -65,8 +67,9 @@ Rules that come with it:
 - In-process endpoint tests and faked clients keep the check hermetic.
 
 **Negative**
-- Python 3.14 support in FastAPI's dependency chain is not verified `[placeholder]`; if wheels are
-  missing, fall back to Python 3.13.
+- Two Python versions matter: the code must stay valid on 3.12 (the minimum) while development
+  and CI run on 3.14; ruff with `target-version = "py312"` catches newer syntax, but not use of
+  newer standard-library APIs.
 - No static type check in the gate (no mypy, by the "no other dependencies" rule); type hints are
   documentation only.
 - The repo carries two toolchains (Python for the app, Node for the Claude Code hook).
