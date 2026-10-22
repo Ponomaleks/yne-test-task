@@ -12,9 +12,9 @@ safely are held for review with a reason instead of being guessed.
 | Webhook endpoint with signature check (v3) | Verified against the test system: 10 deliveries accepted, 1 forged delivery rejected |
 | Won check in any pipeline, from the current deal state | Verified against the test system (dry run) |
 | Customer lookup by normalized orgnr | Verified against the test system (dry run): existing customers found for 2 deals |
-| Customer and Draft order create | <!-- TODO live: verified against the test system / tested with mocks only --> |
+| Customer and Draft order create | Tested with mocks only. In the live run PowerOffice rejected the creates (see below) |
 | Hold rules (missing or foreign orgnr, several companies or customers, deal not found, no lines or currency) | Missing and foreign orgnr verified against the test system; the others tested with mocks only |
-| Idempotency (duplicate events, lookup by external key before create) | <!-- TODO live: second replay result --> |
+| Idempotency (duplicate events, lookup by external key before create) | Tested with mocks only; in the dry run the repeated delivery of deal 201 was handled as expected |
 | 429 handling, timeouts, no blind retry of writes | Tested with mocks only |
 | Dry run | Verified against the test system |
 | `replay` command | Verified against the test system |
@@ -35,7 +35,15 @@ safely are held for review with a reason instead of being guessed.
 | 40211700210 | skipped | current stage not won (new deal) |
 | 40211700209 | rejected | the delivery's signature does not match: a forged webhook for a deal that does not exist |
 
-Dry run: matches the table above. Live run: <!-- TODO: e.g. 4 orders created; second replay created no customer and no order -->
+**Dry run** (`DRY_RUN=true`): matches the table above.
+
+**Live run** (`DRY_RUN=false`): the skipped, held and rejected outcomes match the table. For the
+four orderable deals, every call that writes to PowerOffice ended in `failed: AccountingError`.
+The failure handling worked as designed: the service kept running, every accepted event got an
+outcome, and the failed events stay stored, so the next replay retries them after a lookup by
+external key. The cause was not found within the time box: the app records only the error type,
+never the error body, so the next step is to log the PowerOffice error code and field names
+(no values) and replay.
 
 ## How it works
 
