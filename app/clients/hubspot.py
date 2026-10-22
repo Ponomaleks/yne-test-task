@@ -77,7 +77,7 @@ class LineItem(_Model):
 
 
 class RecordedDelivery(_Model):
-    leveranse: str
+    leveranse: int
     method: str | None = None
     uri: str | None = None
     headers: dict[str, Any] = {}
@@ -135,7 +135,9 @@ class HubSpotClient:
         try:
             return model.model_validate(data)
         except ValidationError as exc:
-            raise HubSpotError(f"unexpected CRM response shape for {model.__name__}") from exc
+            raise HubSpotError(
+                f"unexpected CRM response shape for {model.__name__}"
+            ) from exc
 
     def _pace(self) -> None:
         if self._last_call is not None:
@@ -174,7 +176,9 @@ class HubSpotClient:
             except httpx.TransportError as exc:  # timeouts and network errors
                 failures += 1
                 if failures >= MAX_GET_ATTEMPTS:
-                    raise HubSpotError(f"CRM unreachable: {type(exc).__name__}") from exc
+                    raise HubSpotError(
+                        f"CRM unreachable: {type(exc).__name__}"
+                    ) from exc
                 self._sleep(RETRY_BACKOFF_SECONDS)
                 continue
 
@@ -187,7 +191,9 @@ class HubSpotClient:
             if response.status_code >= 500:
                 failures += 1
                 if failures >= MAX_GET_ATTEMPTS:
-                    raise HubSpotError(f"CRM returned {response.status_code} for {path}")
+                    raise HubSpotError(
+                        f"CRM returned {response.status_code} for {path}"
+                    )
                 self._sleep(RETRY_BACKOFF_SECONDS)
                 continue
             if response.status_code >= 400:

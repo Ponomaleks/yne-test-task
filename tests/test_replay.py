@@ -16,7 +16,7 @@ class FakeHubSpot:
 
 def _delivery(n, body, sig):
     return RecordedDelivery(
-        leveranse=str(n),
+        leveranse=n,
         method="POST",
         uri=URL,
         headers={

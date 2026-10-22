@@ -168,7 +168,7 @@ def test_get_company_line_item_pipelines_and_deliveries():
         if path == "/_testverktoy/webhooks":
             return httpx.Response(
                 200,
-                json={"results": [{"leveranse": "d1", "method": "POST", "uri": "/x",
+                json={"results": [{"leveranse": 1, "method": "POST", "uri": "/x",
                                    "headers": {}, "body": "{}"}]},
             )
         return httpx.Response(500)
@@ -177,4 +177,4 @@ def test_get_company_line_item_pipelines_and_deliveries():
     assert client.get_company("7").properties.orgnr == "123"
     assert client.get_line_item("11").properties.quantity == "2"
     assert client.get_pipelines()["results"][0]["stages"][0]["id"] == "won"
-    assert client.get_recorded_deliveries()[0].leveranse == "d1"
+    assert client.get_recorded_deliveries()[0].leveranse == 1
