@@ -22,6 +22,6 @@
 | T12 | Add the webhook endpoint: verify, persist, acknowledge, schedule | ports | Oleksandr Ponomarenko | M | T2, T3 | done | COMMIT |
 | T13 | Replay recorded deliveries byte for byte to the local endpoint | ports | Oleksandr Ponomarenko | S | T8 | done | COMMIT |
 | T14 | Print the run report from the store | ports | Oleksandr Ponomarenko | S | T2 | todo | — |
-| T15 | Load config once and wire serve, replay and report commands | wiring | Oleksandr Ponomarenko | S | T11, T12, T13, T14 | todo | — |
+| T15 | Load config once and wire serve, replay and report commands | wiring | Oleksandr Ponomarenko | S | T11, T12, T13, T14 | done | COMMIT |
 
 **Total:** 15 tasks (10 S, 5 M), ~4 person-days at S = 1–2 h, M = 3–4 h.

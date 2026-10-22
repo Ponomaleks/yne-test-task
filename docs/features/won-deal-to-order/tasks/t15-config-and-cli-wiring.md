@@ -9,8 +9,8 @@ files_hint: ["app/config.py", "app/__main__.py", "tests/test_config.py", "tests/
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T15 — Load config once and wire serve, replay and report commands

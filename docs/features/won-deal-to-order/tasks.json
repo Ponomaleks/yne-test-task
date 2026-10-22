@@ -299,7 +299,7 @@
         "tests/test_main.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t15-config-and-cli-wiring.md",
-      "status": "todo"
+      "status": "done"
     }
   ]
 }
