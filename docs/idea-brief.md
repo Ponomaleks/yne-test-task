@@ -65,7 +65,7 @@ Constraints to preserve:
   (owner-accepted, Q1).
 - orgnr normalization before any decision: strip spaces, an "NO" prefix and an "MVA" suffix, then
   require exactly 9 digits (owner-accepted, Q2).
-- Hold for review, with the reason kept and retry possible, when the orgnr is missing or invalid,
+- Hold for review, with the reason kept and retry possible (superseded 2026-10-22 by the spec ledger: held units are not re-decided automatically in slice 1), when the orgnr is missing or invalid,
   or when a valid orgnr matches more than one existing PowerOffice customer (owner-accepted, Q2),
   or when the won deal has more than one associated company (owner-accepted, Q3).
 - Language, framework and tools are free; queue and store may be simple (SQLite or a file), with
@@ -131,6 +131,10 @@ code in slice 1 (Q1: no documented update or delete; planned as the flagging str
 
 Outcome: needs-evidence
 
+Update 2026-10-22: the HubSpot evidence blockers in §8 are resolved by `evidence/api-hubspot-*.md`
+(owner); specify proceeded on that basis. Superseded by the spec ledger: held units of work are not
+re-decided automatically in slice 1; only failed ones are retried, by a replay.
+
 Next action: the owner captures API shapes with `/explore-api` into `evidence/`, covering the open
 points in §8, then runs `/sdd:specify won-deal-to-order`.
 
@@ -138,9 +142,9 @@ points in §8, then runs `/sdd:specify won-deal-to-order`.
 
 | Question | Consequence | Blocking? | Verification action | Owner |
 |---|---|---|---|---|
-| Do the real API shapes match the docs (deal, company, line item, customer search, order create, error format)? | Field names, filters and statuses in the spec may be wrong | Blocking for specify (owner, Q3) | `/explore-api` per system, save shapes to `evidence/` | Oleksandr Ponomarenko |
-| How is "won" identified: only `closedwon`, or any stage with `isClosed` true and probability 1.0 in any pipeline? | Wrong deals ordered, or won deals missed | Blocking for specify (owner, Q3) | Inspect `GET /crm/v3/pipelines/deals` via `/explore-api` | Oleksandr Ponomarenko |
-| Which orgnr formats occur in the real company data? | The normalization rule may reject valid numbers or accept invalid ones | Blocking for specify (owner, Q3) | Observe formats (shape only, no values) via `/explore-api` | Oleksandr Ponomarenko |
-| Which scenarios do the recorded webhook deliveries contain (event types, repeats, several events per delivery, deals leaving won)? | Spec could miss a scenario the replay exercises | Blocking for specify (owner, Q3) | Inspect `GET /_testverktoy/webhooks` via `/explore-api` | Oleksandr Ponomarenko |
+| Do the real API shapes match the docs (deal, company, line item, customer search, order create, error format)? | Field names, filters and statuses in the spec may be wrong | Resolved for HubSpot 2026-10-22 (`evidence/api-hubspot-*.md`); PowerOffice shapes still open, before design (owner) | `/explore-api` per system, save shapes to `evidence/` | Oleksandr Ponomarenko |
+| How is "won" identified: only `closedwon`, or any stage with `isClosed` true and probability 1.0 in any pipeline? | Wrong deals ordered, or won deals missed | Resolved 2026-10-22: any stage with `isClosed` "true" and probability 1.0 (`evidence/api-hubspot-pipelines.md`, FINDINGS) | Inspect `GET /crm/v3/pipelines/deals` via `/explore-api` | Oleksandr Ponomarenko |
+| Which orgnr formats occur in the real company data? | The normalization rule may reject valid numbers or accept invalid ones | Resolved 2026-10-22: 9 digits, digits with spaces, "NO ... MVA", foreign prefix seen (`evidence/api-hubspot-deals-summary*.md`) | Observe formats (shape only, no values) via `/explore-api` | Oleksandr Ponomarenko |
+| Which scenarios do the recorded webhook deliveries contain (event types, repeats, several events per delivery, deals leaving won)? | Spec could miss a scenario the replay exercises | Resolved 2026-10-22 (`evidence/api-hubspot-webhooks.md`) | Inspect `GET /_testverktoy/webhooks` via `/explore-api` | Oleksandr Ponomarenko |
 | Does the order reference search match exactly or by "contains"? | Lookup before create could hit the wrong order | Nonblocking for specify | Observe in evidence | Oleksandr Ponomarenko |
 | Discount conversion: rounding rule for NOK-per-unit to percent, and what to do if the order total then differs | Lost or wrong discounts | Nonblocking; decide in specify | Owner decision in specify | Oleksandr Ponomarenko |
