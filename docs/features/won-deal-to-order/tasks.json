@@ -219,7 +219,7 @@
         "tests/test_processor.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t11-process-delivery.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T12",

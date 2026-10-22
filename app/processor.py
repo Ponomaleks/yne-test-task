@@ -4,6 +4,8 @@ Outcomes carry technical IDs, statuses and reasons only, never personal values.
 """
 
 import logging
+import threading
+import time
 from dataclasses import dataclass
 
 from app.clients.hubspot import DealNotFound, HubSpotError
@@ -11,9 +13,12 @@ from app.clients.poweroffice import AccountingError
 from app.core.decide import decide_customer, decide_deal
 from app.core.order import build_order, external_key
 from app.core.won import won_stages
-from app.store import record_outcome
+from app.store import has_final_outcome, record_outcome
 
 log = logging.getLogger(__name__)
+
+# One process-wide lock: two deliveries of the same deal must not both find no order.
+_delivery_lock = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -41,6 +46,51 @@ def process_event(event: dict, *, hubspot, poweroffice, store_path, dry_run: boo
         extra={"event_id": event["event_id"], "deal_id": deal_id, "outcome": result.outcome},
     )
     return result
+
+
+def process_delivery(
+    delivery_id: str, events: list[dict], *, hubspot, poweroffice, store_path, dry_run: bool
+) -> dict[str, int]:
+    """Process the events of one delivery under the lock; return counts per outcome and duplicates.
+
+    Bind the keyword arguments with functools.partial to get the web callback
+    shape `process(delivery_id, events)`.
+    """
+    started = time.monotonic()
+    counts: dict[str, int] = {}
+    with _delivery_lock:
+        for event in events:
+            if has_final_outcome(store_path, event["event_id"]):
+                key = "duplicate"
+            else:
+                key = _process_isolated(event, hubspot, poweroffice, store_path, dry_run)
+            counts[key] = counts.get(key, 0) + 1
+    log.info(
+        "delivery=%s events=%d ordered=%d skipped=%d held=%d failed=%d duplicate=%d duration_ms=%d",
+        delivery_id,
+        len(events),
+        counts.get("ordered", 0),
+        counts.get("skipped", 0),
+        counts.get("held", 0),
+        counts.get("failed", 0),
+        counts.get("duplicate", 0),
+        (time.monotonic() - started) * 1000,
+    )
+    return counts
+
+
+def _process_isolated(event: dict, hubspot, poweroffice, store_path, dry_run: bool) -> str:
+    """One event never stops the others: an unexpected error is recorded as failed."""
+    try:
+        return process_event(
+            event, hubspot=hubspot, poweroffice=poweroffice, store_path=store_path, dry_run=dry_run
+        ).outcome
+    except Exception as exc:
+        reason = f"failed: {type(exc).__name__}"
+        deal_id = str(event["deal_id"])
+        record_outcome(store_path, event["event_id"], deal_id, "failed", reason, False)
+        log.error("event failed", extra={"event_id": event["event_id"], "error": reason})
+        return "failed"
 
 
 def _decide_and_act(event: dict, deal_id: str, hubspot, poweroffice, dry_run: bool) -> Outcome:

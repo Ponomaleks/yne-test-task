@@ -1,8 +1,11 @@
+import threading
+from functools import partial
+
 import pytest
 
 from app.clients.hubspot import Company, Deal, DealNotFound, HubSpotError, LineItem
 from app.clients.poweroffice import AccountingError
-from app.processor import process_event
+from app.processor import process_delivery, process_event
 from app.store import init_store, last_outcome, save_events
 
 PIPELINES = {
@@ -191,3 +194,127 @@ def test_ac18_dry_run_writes_nothing(store):
     assert COMPANY_NAME not in out.reason
     row = last_outcome(store, 1)
     assert (row["outcome"], row["dry_run"]) == ("ordered", 1)
+
+
+# --- process_delivery (T11) ---
+
+
+class PerDealHubSpot(FakeHubSpot):
+    """Stage per deal id; a deal listed in `broken` fails its CRM read."""
+
+    def __init__(self, stages, broken=()):
+        super().__init__()
+        self.stages = stages
+        self.broken = set(broken)
+
+    def get_deal(self, deal_id):
+        if deal_id in self.broken:
+            raise HubSpotError("CRM unreachable")
+        self.stage = self.stages[deal_id]
+        return super().get_deal(deal_id)
+
+
+class OrderBookPowerOffice(FakePowerOffice):
+    """Remembers created orders by reference, like the real system."""
+
+    def __init__(self, customers=(), preexisting=()):
+        super().__init__(customers=customers)
+        self.book = {ref: {"id": "old"} for ref in preexisting}
+
+    def find_orders(self, reference):
+        return [self.book[reference]] if reference in self.book else []
+
+    def create_order(self, payload):
+        self.book[payload["reference"]] = {"id": "order-x"}
+        return super().create_order(payload)
+
+
+def ev(event_id, deal_id, property_name="dealstage"):
+    return {
+        "event_id": event_id,
+        "deal_id": deal_id,
+        "subscription_type": "deal.propertyChange",
+        "property_name": property_name,
+    }
+
+
+def deliver(store, events, hubspot, po, dry_run=False):
+    save_events(store, events)
+    process = partial(
+        process_delivery, hubspot=hubspot, poweroffice=po, store_path=store, dry_run=dry_run
+    )
+    return process("d1", events)  # same shape as the web callback process(delivery_id, events)
+
+
+def mixed_events():
+    return [ev(1, 10), ev(2, 11), ev(3, 12, "amount"), ev(4, 13)]
+
+
+def mixed_hubspot():
+    return PerDealHubSpot({"10": "open", "11": "open", "12": "won", "13": "won"}, broken={"13"})
+
+
+def test_ac16_mixed_delivery_each_event_gets_own_outcome(store):
+    po = OrderBookPowerOffice(customers=[{"id": "c"}], preexisting=["hubspot-deal-12"])
+    counts = deliver(store, mixed_events(), mixed_hubspot(), po)
+    assert counts == {"skipped": 3, "failed": 1}
+    assert last_outcome(store, 3)["reason"] == "change after order, not handled"
+    assert last_outcome(store, 4)["outcome"] == "failed"
+    assert last_outcome(store, 4)["reason"] == "HubSpotError"
+    assert last_outcome(store, 1)["outcome"] == "skipped"
+
+
+def test_repeat_delivery_counts_final_events_as_duplicates(store):
+    events = [ev(1, 10), ev(2, 11)]
+    hs = PerDealHubSpot({"10": "open", "11": "open"})
+    deliver(store, events, hs, OrderBookPowerOffice())
+    counts = deliver(store, events, hs, OrderBookPowerOffice())
+    assert counts == {"duplicate": 2}
+
+
+def test_failed_event_is_retried_on_replay(store):
+    events = [ev(1, 13)]
+    deliver(store, events, PerDealHubSpot({"13": "open"}, broken={"13"}), OrderBookPowerOffice())
+    assert last_outcome(store, 1)["outcome"] == "failed"
+    counts = deliver(store, events, PerDealHubSpot({"13": "open"}), OrderBookPowerOffice())
+    assert counts == {"skipped": 1}
+    assert last_outcome(store, 1)["outcome"] == "skipped"
+
+
+def test_held_event_keeps_its_outcome_on_replay(store):
+    events = [ev(1, 10)]
+    po = OrderBookPowerOffice(customers=[{"id": "a"}, {"id": "b"}])
+    hs = PerDealHubSpot({"10": "won"})
+    assert deliver(store, events, hs, po) == {"held": 1}
+    assert deliver(store, events, hs, po) == {"duplicate": 1}
+    assert last_outcome(store, 1)["outcome"] == "held"
+
+
+def test_unexpected_exception_is_recorded_failed_and_run_continues(store):
+    class Boom(PerDealHubSpot):
+        def get_deal(self, deal_id):
+            if deal_id == "10":
+                raise ValueError("bug")
+            return super().get_deal(deal_id)
+
+    counts = deliver(store, [ev(1, 10), ev(2, 11)], Boom({"11": "open"}), OrderBookPowerOffice())
+    assert counts == {"failed": 1, "skipped": 1}
+    assert last_outcome(store, 1)["reason"] == "failed: ValueError"
+
+
+def test_two_concurrent_deliveries_of_one_deal_create_one_order(store):
+    events = [[ev(1, 10)], [ev(2, 10)]]
+    save_events(store, events[0] + events[1])
+    po = OrderBookPowerOffice(customers=[{"id": "c"}])
+    hs = PerDealHubSpot({"10": "won"})
+    process = partial(
+        process_delivery, hubspot=hs, poweroffice=po, store_path=store, dry_run=False
+    )
+    threads = [
+        threading.Thread(target=process, args=(f"d{i}", evs)) for i, evs in enumerate(events)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert [p[0] for p in po.posts] == ["order"]

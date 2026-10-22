@@ -9,8 +9,8 @@ files_hint: ["app/processor.py", "tests/test_processor.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T11 — Process a delivery's events under one lock, counting duplicates and failures
