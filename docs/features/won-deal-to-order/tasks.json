@@ -43,7 +43,7 @@
         "tests/test_store.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t02-store-functions.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T3",

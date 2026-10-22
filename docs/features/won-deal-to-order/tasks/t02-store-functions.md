@@ -9,8 +9,8 @@ files_hint: ["app/store.py", "tests/test_store.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T2 — Add store functions for deliveries, events, outcomes and rejections
