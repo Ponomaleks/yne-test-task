@@ -9,8 +9,8 @@ files_hint: ["app/clients/poweroffice.py", "tests/clients/test_poweroffice.py"]
 owner: "Oleksandr Ponomarenko"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T9 — Build the PowerOffice client with token, lookups and creates

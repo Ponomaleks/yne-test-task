@@ -170,7 +170,7 @@
         "tests/clients/test_poweroffice.py"
       ],
       "file": "docs/features/won-deal-to-order/tasks/t09-poweroffice-client.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T10",
