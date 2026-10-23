@@ -1,5 +1,6 @@
 import argparse
 import functools
+import logging
 import os
 import sys
 from collections.abc import Mapping
@@ -47,6 +48,10 @@ def main(argv: list[str], env: Mapping[str, str] | None = None) -> int:
         return 1
 
     if args.command == "serve":
+        # uvicorn configures only its own loggers; the app's outcome lines need the root one.
+        logging.basicConfig(
+            level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+        )
         init_store(STORE_PATH)
         # The clients live as long as the server; each delivery is processed in the background.
         with httpx.Client() as http:

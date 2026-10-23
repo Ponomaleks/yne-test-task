@@ -69,6 +69,63 @@ def test_post_500_raises_and_is_not_retried():
     assert len(posts) == 1
 
 
+# Synthetic body shaped like the documented error: {"error", "message", "details", "traceId"}.
+# Only `details[].field` is read; the shape of a details item is otherwise not verified.
+VALIDATION_ERROR_BODY = {
+    "error": "ValidationError",
+    "message": "synthetic-message-text",
+    "details": [{"field": "lines.unitPrice"}, {"field": "customerId"}],
+    "traceId": "synthetic-trace-id",
+}
+
+
+def test_post_400_logs_status_error_and_field_names_only(caplog):
+    def handler(request):
+        if request.url.path == "/oauth/token":
+            return token_response()
+        return httpx.Response(400, json=VALIDATION_ERROR_BODY)
+
+    with caplog.at_level("INFO"), pytest.raises(AccountingError) as exc:
+        make_client(handler).create_order({"reference": "hubspot-deal-1"})
+
+    assert exc.value.status == 400
+    assert exc.value.error_code == "ValidationError"
+    assert exc.value.fields == ["lines.unitPrice", "customerId"]
+    assert "status=400 error=ValidationError fields=lines.unitPrice,customerId" in caplog.text
+    assert "POST /v2/SalesOrders" in caplog.text
+    assert "synthetic-message-text" not in caplog.text
+    assert "synthetic-trace-id" not in caplog.text
+    assert "synthetic-message-text" not in str(exc.value)
+
+
+def test_error_without_documented_body_logs_status_only(caplog):
+    def handler(request):
+        if request.url.path == "/oauth/token":
+            return token_response()
+        return httpx.Response(400, text="not json")
+
+    with caplog.at_level("INFO"), pytest.raises(AccountingError) as exc:
+        make_client(handler).create_order({"reference": "hubspot-deal-1"})
+
+    assert (exc.value.status, exc.value.error_code, exc.value.fields) == (400, "unknown", [])
+    assert "status=400 error=unknown fields=" in caplog.text
+
+
+def test_error_code_that_is_not_a_plain_token_is_not_logged(caplog):
+    body = {"error": "value with spaces a@b.test", "details": [{"field": "x y"}, "bad"]}
+
+    def handler(request):
+        if request.url.path == "/oauth/token":
+            return token_response()
+        return httpx.Response(400, json=body)
+
+    with caplog.at_level("INFO"), pytest.raises(AccountingError) as exc:
+        make_client(handler).create_order({"reference": "hubspot-deal-1"})
+
+    assert (exc.value.error_code, exc.value.fields) == ("unknown", [])
+    assert "a@b.test" not in caplog.text
+
+
 def test_post_timeout_raises_and_is_not_retried():
     posts = []
 

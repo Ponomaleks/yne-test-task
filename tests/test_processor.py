@@ -171,6 +171,28 @@ def test_ac13_accounting_failure_recorded_as_failed(store):
     assert last_outcome(store, 1)["outcome"] == "failed"
 
 
+def test_accounting_http_error_puts_status_code_and_fields_in_reason(store):
+    class RejectingPowerOffice(FakePowerOffice):
+        def create_order(self, payload):
+            raise AccountingError(
+                "POST /v2/SalesOrders returned 400",
+                status=400,
+                error_code="ValidationError",
+                fields=["lines.unitPrice"],
+            )
+
+    out = run(store, FakeHubSpot(), RejectingPowerOffice(customers=[{"id": "cust-1"}]))
+    reason = "failed: AccountingError 400 ValidationError fields=lines.unitPrice"
+    assert (out.outcome, out.reason) == ("failed", reason)
+    assert last_outcome(store, 1)["reason"] == reason
+
+
+def test_event_processed_line_carries_ids_and_outcome(store, caplog):
+    with caplog.at_level("INFO"):
+        run(store, FakeHubSpot(stage="open"), FakePowerOffice())
+    assert "event_id=1 deal_id=42 outcome=skipped" in caplog.text
+
+
 def test_ac13_retry_finds_existing_order_and_creates_nothing(store):
     po = FakePowerOffice(orders=[{"id": "order-1", "reference": "hubspot-deal-42"}])
     out = run(store, FakeHubSpot(), po)

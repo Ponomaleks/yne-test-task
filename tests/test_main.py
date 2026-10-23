@@ -40,7 +40,11 @@ def test_serve_wires_process_delivery_as_the_web_callback(monkeypatch, tmp_path)
     monkeypatch.setattr(cli, "create_app", lambda **kwargs: captured.update(kwargs))
     monkeypatch.setattr(cli.uvicorn, "run", lambda *args, **kwargs: None)
 
+    levels = []
+    monkeypatch.setattr(cli.logging, "basicConfig", lambda **kwargs: levels.append(kwargs["level"]))
+
     assert main(["serve"], env=env) == 0
+    assert levels == [cli.logging.INFO]
     process = captured["process"]
     assert process.func is cli.process_delivery
     assert process.keywords["dry_run"] is True
