@@ -113,3 +113,20 @@ No personal values.
 - Handled: no code change. The integration passes the deal currency and the test system stores it,
   so a non-NOK currency is not a hold reason. Exchange rates and VAT for foreign customers stay a
   production question for finance.
+
+## 2026-10-23 - PowerOffice - A foreign customer can be created, but duplicates are not prevented
+
+- Docs say: the task API docs describe the customer search by name as matching customers whose
+  name contains the text. For the search by `organizationNumber` they say only that it returns
+  customers with this organization number. Exact versus partial matching is not verified; we only
+  know that the normalized 9-digit orgnr found the expected customers (evidence/api-poweroffice.md).
+- Observed: a manual check by the owner in Postman. `POST /v2/Customers` with `countryCode` "DE"
+  and no `organizationNumber` was accepted (customer 6002). The same request sent again created
+  customer 6003, identical to 6002. PowerOffice does not prevent duplicate customers without an
+  orgnr.
+- Handled: no code change. For task question 3: a foreign customer can be created technically, but
+  without a reliable key the integration cannot find it again safely. A name search that matches on
+  "contains" is no safe lookup, and there is no orgnr to look up by. Holding foreign customers stays
+  the right default until a stable key is agreed, for example the HubSpot company ID stored on the
+  customer, or a VAT number. The manual test records (customers 6002 and 6003, order 9005) stay in
+  the test system.
