@@ -100,3 +100,16 @@ No personal values.
   3 x (28000 - 4000) = 72000). It runs before any
   customer lookup or create, so a held deal leaves nothing in PowerOffice. Order 9003 itself is not
   corrected by the integration.
+
+## 2026-10-23 - PowerOffice - A non-NOK order currency is accepted and kept
+
+- Docs say: nothing on whether a sales order may use a currency other than NOK; the evidence probes
+  did not cover it. The integration sends the deal currency as `currencyCode` and never assumes
+  one (sad.md, internationalisation).
+- Observed: a manual check by the owner in Postman. A sales order with `currencyCode` "EUR" on an
+  existing customer was accepted as Draft, and the response kept `currencyCode` "EUR" and
+  `totalExVat` 1000 unchanged (order 9005, reference "manual-test-eur-1", created by hand, not by
+  the integration).
+- Handled: no code change. The integration passes the deal currency and the test system stores it,
+  so a non-NOK currency is not a hold reason. Exchange rates and VAT for foreign customers stay a
+  production question for finance.

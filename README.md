@@ -15,6 +15,7 @@ safely are held for review with a reason instead of being guessed.
 | Customer and Draft order create | Tested with mocks only. In the live run PowerOffice rejected the creates (see below) |
 | Hold rules (missing or foreign orgnr, several companies or customers, deal not found, no lines or currency) | Missing and foreign orgnr verified against the test system; the others tested with mocks only |
 | Idempotency (duplicate events, lookup by external key before create) | Tested with mocks only; in the dry run the repeated delivery of deal 201 was handled as expected |
+| Non-NOK currency (deal currency passed as `currencyCode`) | Verified by a manual order in the test system |
 | 429 handling, timeouts, no blind retry of writes | Tested with mocks only |
 | Dry run | Verified against the test system |
 | `replay` command | Verified against the test system |
