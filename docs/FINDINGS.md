@@ -93,7 +93,7 @@ No personal values.
 - Evidence note: the evidence probes requested `discount` explicitly, so they could not show this.
   The request line in the header of `evidence/api-hubspot-deals-summary.md` omits `properties`, but
   every line there has a `discount` key (`null` where there is no discount), which a default
-  response leaves out. That header line is incomplete.
+  response leaves out. That header line was incomplete and is corrected in a31bc62.
 - Handled: line items are requested with `properties=name,price,quantity,discount`. A new guard
   holds a deal with the reason "order total does not match deal amount" unless the sum over its
   line items of quantity x (price - discount per unit) equals the deal amount (for this line
