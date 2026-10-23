@@ -121,7 +121,11 @@ class HubSpotClient:
         return self._parse(Company, data)
 
     def get_line_item(self, line_item_id: str) -> LineItem:
-        data = self._get(f"/crm/v3/objects/line_items/{line_item_id}")
+        # Named explicitly: discount is not a default line item property in the docs.
+        data = self._get(
+            f"/crm/v3/objects/line_items/{line_item_id}",
+            params={"properties": "name,price,quantity,discount"},
+        )
         return self._parse(LineItem, data)
 
     def get_pipelines(self) -> dict[str, Any]:

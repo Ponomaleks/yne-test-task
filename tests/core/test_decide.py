@@ -1,6 +1,6 @@
 import pytest
 
-from app.core.decide import Decision, decide_customer, decide_deal
+from app.core.decide import Decision, decide_customer, decide_deal, decide_total
 
 WON = {("p1", "s1")}
 GOOD = [{"orgnr": "123456789", "country": "Norway"}]
@@ -67,3 +67,35 @@ def test_several_customers_are_held():
 @pytest.mark.parametrize("matches", [[], [{"id": "c1"}]])
 def test_zero_or_one_customer_is_orderable(matches):
     assert decide_customer(matches).outcome == "orderable"
+
+
+# The discount is currency per unit (spec AC on discounts):
+# a line totals quantity x (price - discount).
+TOTAL_ITEMS = [
+    {"price": "300", "quantity": "2", "discount": "100"},
+    {"price": "10.50", "quantity": "1", "discount": None},
+]
+
+
+@pytest.mark.parametrize("amount", ["410.50", "410.5", "410.500"])
+def test_order_total_matching_deal_amount_is_orderable(amount):
+    assert decide_total(amount, TOTAL_ITEMS).outcome == "orderable"
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        "610.50",  # the discount was not applied
+        "510.50",  # the discount taken once per line instead of per unit
+        None,  # no amount to check against
+        "",
+        "not a number",
+    ],
+)
+def test_order_total_not_matching_deal_amount_is_held(amount):
+    result = decide_total(amount, TOTAL_ITEMS)
+    assert (result.outcome, result.reason) == ("held", "order total does not match deal amount")
+
+
+def test_missing_discount_key_counts_as_zero():
+    assert decide_total("20", [{"price": "10", "quantity": "2"}]).outcome == "orderable"

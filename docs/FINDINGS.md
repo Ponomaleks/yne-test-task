@@ -77,3 +77,20 @@ No personal values.
 - Handled: by the existing rule, no code change. The client did not retry the POST, and the event
   was recorded as failed. The next replay found the order by its external key and recorded
   "order already exists" instead of creating a duplicate (AC-13).
+
+## 2026-10-23 - HubSpot / PowerOffice - First order for deal 40211700203 lost its discount
+
+- Docs say: HubSpot lists `discount` as a line item property outside the defaults, which is
+  returned only when it is named in `properties`. The client fetched line items without
+  `properties`.
+- Observed: after the live run, a check of the orders in PowerOffice showed order 9003 (deal
+  40211700203) with `discountPercent` 0, although its line item has a discount
+  (`evidence/api-hubspot-deals-summary.md`). Not confirmed as the cause: that evidence was
+  captured without `properties` and still shows `discount` for this line item. Whether HubSpot
+  omitted the discount in the live run, or PowerOffice ignored the `discountPercent` field, is not
+  verified yet.
+- Handled: line items are requested with `properties=name,price,quantity,discount`. A new guard
+  holds a deal with the reason "order total does not match deal amount" unless the sum over its
+  line items of quantity x (price - discount per unit) equals the deal amount. It runs before any
+  customer lookup or create, so a held deal leaves nothing in PowerOffice. Order 9003 itself is not
+  corrected by the integration.
