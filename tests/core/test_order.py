@@ -46,10 +46,10 @@ def test_build_order_one_line_per_item_in_order():
     assert order["lines"][0] == {
         "description": "Alpha",
         "quantity": Decimal("2"),
-        "unitPrice": Decimal("300"),
+        "unitPriceExVat": Decimal("300"),
         "discountPercent": Decimal("33.33"),
     }
-    assert order["lines"][1]["unitPrice"] == Decimal("10.50")
+    assert order["lines"][1]["unitPriceExVat"] == Decimal("10.50")
     assert order["lines"][1]["discountPercent"] == Decimal("0.00")
 
 

@@ -52,6 +52,8 @@ def main(argv: list[str], env: Mapping[str, str] | None = None) -> int:
         logging.basicConfig(
             level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
         )
+        # httpx logs every request URL at INFO, query values (orgnr) included.
+        logging.getLogger("httpx").setLevel(logging.WARNING)
         init_store(STORE_PATH)
         # The clients live as long as the server; each delivery is processed in the background.
         with httpx.Client() as http:

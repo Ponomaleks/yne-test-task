@@ -55,3 +55,13 @@ No personal values.
   or processed (AC-15). The rejection keeps only the timestamp header and a SHA-256 of the body.
   The spec's AC-17 and §7 are corrected: deal 40211700209 is no longer expected to be held for
   "deal not found".
+
+## 2026-10-23 - PowerOffice - Order line price field is `unitPriceExVat`
+
+- Docs say: a sales order line has `description`, `quantity`, `unitPrice` and `discountPercent`.
+- Observed in the live run: every `POST /v2/SalesOrders` failed with
+  `400 ValidationError fields=Lines[0].UnitPriceExVat`. The test system requires the line price in
+  `unitPriceExVat`. Found through the error logging (status, error code and field names only).
+  The first live run created the customer for company 21894400101 before its order failed; the next
+  run found that customer by orgnr and reused it, so no duplicate customer was created.
+- Handled: order lines send the price as `unitPriceExVat`; all other fields are unchanged.

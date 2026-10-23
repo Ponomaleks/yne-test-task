@@ -178,11 +178,11 @@ def test_accounting_http_error_puts_status_code_and_fields_in_reason(store):
                 "POST /v2/SalesOrders returned 400",
                 status=400,
                 error_code="ValidationError",
-                fields=["lines.unitPrice"],
+                fields=["Lines[0].UnitPriceExVat"],
             )
 
     out = run(store, FakeHubSpot(), RejectingPowerOffice(customers=[{"id": "cust-1"}]))
-    reason = "failed: AccountingError 400 ValidationError fields=lines.unitPrice"
+    reason = "failed: AccountingError 400 ValidationError fields=Lines[0].UnitPriceExVat"
     assert (out.outcome, out.reason) == ("failed", reason)
     assert last_outcome(store, 1)["reason"] == reason
 

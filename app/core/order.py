@@ -36,7 +36,8 @@ def build_order(
             {
                 "description": item["name"],
                 "quantity": Decimal(item["quantity"]),
-                "unitPrice": unit_price,
+                # The test system requires unitPriceExVat; the docs show unitPrice (FINDINGS.md).
+                "unitPriceExVat": unit_price,
                 "discountPercent": percent,
             }
         )
