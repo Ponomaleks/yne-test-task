@@ -23,11 +23,15 @@ COMPANY_NAME = "Secret Name AS"
 
 
 class FakeHubSpot:
-    def __init__(self, stage="won", orgnr="123456785", missing=False, read_error=False):
+    # amount 180 = quantity 2 x (price 100.00 - discount 10) of the one line item below.
+    def __init__(
+        self, stage="won", orgnr="123456785", missing=False, read_error=False, amount="180"
+    ):
         self.stage = stage
         self.orgnr = orgnr
         self.missing = missing
         self.read_error = read_error
+        self.amount = amount
 
     def get_deal(self, deal_id):
         if self.missing:
@@ -36,7 +40,12 @@ class FakeHubSpot:
             raise HubSpotError("CRM unreachable")
         return Deal(
             id=deal_id,
-            properties={"dealstage": self.stage, "pipeline": "p1", "deal_currency_code": "NOK"},
+            properties={
+                "dealstage": self.stage,
+                "pipeline": "p1",
+                "deal_currency_code": "NOK",
+                "amount": self.amount,
+            },
             associations={
                 "companies": {"results": [{"id": "c1"}]},
                 "line_items": {"results": [{"id": "l1"}]},
@@ -70,8 +79,10 @@ class FakePowerOffice:
         self.orders = list(orders)
         self.fail_order = fail_order
         self.posts = []
+        self.customer_lookups = 0
 
     def find_customers(self, orgnr):
+        self.customer_lookups += 1
         return self.customers
 
     def find_orders(self, reference):
@@ -148,6 +159,15 @@ def test_ac09_several_customers_held(store):
     assert po.posts == []
 
 
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_order_total_mismatch_held_before_any_customer_lookup_or_write(store, dry_run):
+    po = FakePowerOffice()
+    out = run(store, FakeHubSpot(amount="200"), po, dry_run=dry_run)
+    assert (out.outcome, out.reason) == ("held", "order total does not match deal amount")
+    assert po.customer_lookups == 0
+    assert po.posts == []
+
+
 def test_ac11_deal_not_found_held(store):
     out = run(store, FakeHubSpot(missing=True), FakePowerOffice())
     assert (out.outcome, out.reason) == ("held", "deal not found")
@@ -169,6 +189,28 @@ def test_ac13_accounting_failure_recorded_as_failed(store):
     out = run(store, FakeHubSpot(), po)
     assert (out.outcome, out.reason) == ("failed", "AccountingError")
     assert last_outcome(store, 1)["outcome"] == "failed"
+
+
+def test_accounting_http_error_puts_status_code_and_fields_in_reason(store):
+    class RejectingPowerOffice(FakePowerOffice):
+        def create_order(self, payload):
+            raise AccountingError(
+                "POST /v2/SalesOrders returned 400",
+                status=400,
+                error_code="ValidationError",
+                fields=["Lines[0].UnitPriceExVat"],
+            )
+
+    out = run(store, FakeHubSpot(), RejectingPowerOffice(customers=[{"id": "cust-1"}]))
+    reason = "failed: AccountingError 400 ValidationError fields=Lines[0].UnitPriceExVat"
+    assert (out.outcome, out.reason) == ("failed", reason)
+    assert last_outcome(store, 1)["reason"] == reason
+
+
+def test_event_processed_line_carries_ids_and_outcome(store, caplog):
+    with caplog.at_level("INFO"):
+        run(store, FakeHubSpot(stage="open"), FakePowerOffice())
+    assert "event_id=1 deal_id=42 outcome=skipped" in caplog.text
 
 
 def test_ac13_retry_finds_existing_order_and_creates_nothing(store):

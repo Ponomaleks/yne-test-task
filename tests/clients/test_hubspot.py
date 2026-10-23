@@ -178,3 +178,19 @@ def test_get_company_line_item_pipelines_and_deliveries():
     assert client.get_line_item("11").properties.quantity == "2"
     assert client.get_pipelines()["results"][0]["stages"][0]["id"] == "won"
     assert client.get_recorded_deliveries()[0].leveranse == 1
+
+
+def test_get_line_item_requests_its_properties_explicitly():
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.params.get("properties"))
+        return httpx.Response(
+            200,
+            json={"id": "11", "properties": {"name": "Item", "price": "10", "quantity": "2",
+                                             "discount": "1.50"}},
+        )
+
+    client, _ = make_client(handler)
+    assert client.get_line_item("11").properties.discount == "1.50"
+    assert seen == ["name,price,quantity,discount"]

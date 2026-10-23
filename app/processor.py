@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from app.clients.hubspot import DealNotFound, HubSpotError
 from app.clients.poweroffice import AccountingError
-from app.core.decide import decide_customer, decide_deal
+from app.core.decide import decide_customer, decide_deal, decide_total
 from app.core.order import build_order, external_key
 from app.core.won import won_stages
 from app.store import has_final_outcome, record_outcome
@@ -35,17 +35,30 @@ def process_event(event: dict, *, hubspot, poweroffice, store_path, dry_run: boo
         result = _decide_and_act(event, deal_id, hubspot, poweroffice, dry_run)
     except DealNotFound:
         result = Outcome("held", "deal not found")
-    except (HubSpotError, AccountingError) as exc:
+    except AccountingError as exc:
         # Kept as failed so the next replay retries it.
+        result = Outcome("failed", _accounting_reason(exc))
+    except HubSpotError as exc:
         result = Outcome("failed", type(exc).__name__)
     record_outcome(
         store_path, event["event_id"], deal_id, result.outcome, result.reason, result.dry_run
     )
     log.info(
-        "event processed",
-        extra={"event_id": event["event_id"], "deal_id": deal_id, "outcome": result.outcome},
+        "event processed event_id=%s deal_id=%s outcome=%s reason=%s",
+        event["event_id"],
+        deal_id,
+        result.outcome,
+        result.reason,
     )
     return result
+
+
+def _accounting_reason(exc: AccountingError) -> str:
+    """Status, error code and field names when the system answered; the type name otherwise."""
+    if exc.status is None:
+        return type(exc).__name__
+    fields = ",".join(exc.fields)
+    return f"failed: {type(exc).__name__} {exc.status} {exc.error_code} fields={fields}"
 
 
 def process_delivery(
@@ -89,7 +102,7 @@ def _process_isolated(event: dict, hubspot, poweroffice, store_path, dry_run: bo
         reason = f"failed: {type(exc).__name__}"
         deal_id = str(event["deal_id"])
         record_outcome(store_path, event["event_id"], deal_id, "failed", reason, False)
-        log.error("event failed", extra={"event_id": event["event_id"], "error": reason})
+        log.error("event failed event_id=%s error=%s", event["event_id"], reason)
         return "failed"
 
 
@@ -121,12 +134,18 @@ def _decide_and_act(event: dict, deal_id: str, hubspot, poweroffice, dry_run: bo
         )
         return Outcome("skipped", reason)
 
+    # After the order lookup, so a change after order keeps its own reason; before any
+    # customer lookup or create, so a held deal leaves nothing behind.
+    line_items = [i.properties.model_dump() for i in items]
+    total_decision = decide_total(deal.properties.get("amount"), line_items)
+    if total_decision.outcome != "orderable":
+        return Outcome(total_decision.outcome, total_decision.reason)
+
     matches = poweroffice.find_customers(decision.orgnr)
     customer_decision = decide_customer(matches)
     if customer_decision.outcome != "orderable":
         return Outcome(customer_decision.outcome, customer_decision.reason)
 
-    line_items = [i.properties.model_dump() for i in items]
     if dry_run:
         # Build with a placeholder customer so mapping errors surface in a dry run too.
         build_order(deal_id, currency, line_items, "dry-run")

@@ -2,24 +2,39 @@
 
 Retry policy: 429 on any method (honoring Retry-After); GET on 5xx/timeout/network
 error. A POST is never retried on 5xx/timeout: the processor looks up by the
-external key before any new create. Error bodies are never logged or put into
-exception messages.
+external key before any new create. From an error body only the `error` code and
+the `details[].field` names are kept; message texts and values are never logged or
+put into exception messages.
 """
 
 import json
+import logging
 import re
 import time
 from decimal import Decimal
 
 import httpx
 
+log = logging.getLogger(__name__)
+
 TIMEOUT_SECONDS = 15
 MAX_ATTEMPTS = 3
 _DECIMAL_MARK = "__decimal__:"
+# Codes and field names are identifiers; anything else may carry a value and is dropped.
+_IDENTIFIER = re.compile(r"[A-Za-z0-9_.\[\]-]{1,64}")
 
 
 class AccountingError(Exception):
-    """Accounting system failed or did not answer."""
+    """Accounting system failed or did not answer.
+
+    status, error_code and fields are set when the system answered with an error status.
+    """
+
+    def __init__(self, message, status=None, error_code=None, fields=()):
+        super().__init__(message)
+        self.status = status
+        self.error_code = error_code
+        self.fields = list(fields)
 
 
 class AccountingAuthError(AccountingError):
@@ -130,8 +145,46 @@ class PowerOfficeClient:
             if status >= 500 and method == "GET" and attempt < MAX_ATTEMPTS:
                 continue
             if status >= 400:
-                raise AccountingError(f"{method} {path} returned {status}")
+                error_code, fields = _error_summary(response)
+                log.warning(
+                    "poweroffice call failed: %s %s status=%d error=%s fields=%s",
+                    method,
+                    path,
+                    status,
+                    error_code,
+                    ",".join(fields),
+                )
+                raise AccountingError(
+                    f"{method} {path} returned {status}",
+                    status=status,
+                    error_code=error_code,
+                    fields=fields,
+                )
             return response
+
+
+def _error_summary(response) -> tuple[str, list[str]]:
+    """Read the documented error body {"error", "message", "details", "traceId"}.
+
+    Returns the error code and the details[].field names, each only when it is a
+    plain identifier. The body shape is not verified against a real response.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        return "unknown", []
+    if not isinstance(body, dict):
+        return "unknown", []
+    code = body.get("error")
+    error_code = code if isinstance(code, str) and _IDENTIFIER.fullmatch(code) else "unknown"
+    details = body.get("details")
+    fields = [
+        d["field"]
+        for d in (details if isinstance(details, list) else [])
+        if isinstance(d, dict) and isinstance(d.get("field"), str)
+        and _IDENTIFIER.fullmatch(d["field"])
+    ]
+    return error_code, fields
 
 
 def _retry_after(response) -> float:
