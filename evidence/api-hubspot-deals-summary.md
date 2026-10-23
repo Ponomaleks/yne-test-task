@@ -1,7 +1,7 @@
 # Evidence: HubSpot summary over deals in recorded webhooks
 
 - Captured: 2026-10-22, 21:59 (Europe/Oslo)
-- Requests: `GET /_testverktoy/webhooks`, then per deal `GET /crm/v3/objects/deals/{id}?associations=companies,line_items`, per company `GET /crm/v3/objects/companies/{id}?properties=orgnr,country,fakturaepost`, per line item `GET /crm/v3/objects/line_items/{id}`
+- Requests: `GET /_testverktoy/webhooks`, then per deal `GET /crm/v3/objects/deals/{id}?associations=companies,line_items`, per company `GET /crm/v3/objects/companies/{id}?properties=orgnr,country,fakturaepost`, per line item `GET /crm/v3/objects/line_items/{id}?properties=price,quantity,discount,amount,name,hs_line_item_currency_code`
 - Sequential, about 300 ms between requests
 - Captured by: human, technical IDs, codes and digit masks only (each digit shown as 9)
 - Result: stopped by `429` after about 17 requests, at the company of deal 40211700205. Deals 40211700204, 40211700206 and 40211700209 were not reached. Deal 40211700205 has no company or line item details.
