@@ -65,3 +65,15 @@ No personal values.
   The first live run created the customer for company 21894400101 before its order failed; the next
   run found that customer by orgnr and reused it, so no duplicate customer was created.
 - Handled: order lines send the price as `unitPriceExVat`; all other fields are unchanged.
+
+## 2026-10-23 - PowerOffice - Order created although the create returned 502
+
+- Docs say: nothing about a 5xx response to `POST /v2/SalesOrders`, or whether the order may still
+  exist after one. Our own rule (sad.md, AC-13) assumes it can: a POST is never retried by the
+  client, and a retry first looks up the order by the deal's external key.
+- Observed in the live run: `POST /v2/SalesOrders` for deal 40211700202 returned `502`, but the
+  order was created (order 9002). Verified by the owner with a read-only search by reference
+  `hubspot-deal-40211700202`; the order's `createdAt` matches the time of the `502`.
+- Handled: by the existing rule, no code change. The client did not retry the POST, and the event
+  was recorded as failed. The next replay found the order by its external key and recorded
+  "order already exists" instead of creating a duplicate (AC-13).
